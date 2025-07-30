@@ -1,0 +1,87 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+*.eggs/
+*.manifest
+*.spec
+*.log
+
+# Ignore pip cache
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ===== Django =====
+*.sqlite3
+db.sqlite3
+*.log
+local_settings.py
+.env
+.env.*
+.venv
+venv/
+env/
+ENV/
+instance/
+.settings/
+
+# Ignore media/uploads/static if not managed
+media/
+uploads/
+staticfiles/
+static/
+*.bak
+
+# Ignore migration files (if needed, optional)
+# *migration*/  # uncomment only if you want to ignore migrations
+
+# ===== OS Files =====
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# ===== Virtual Environments =====
+venv/
+ENV/
+env/
+.venv/
+
+# ===== PyCharm / VSCode / other IDEs =====
+.idea/
+.vscode/
+*.code-workspace
+
+# ===== Coverage / Testing / Build =====
+.coverage
+.tox/
+coverage.xml
+htmlcov/
+.pytest_cache/
+nosetests.xml
+test-results/
+.cache/
+build/
+dist/
+
+# ===== Node (if frontend is included) =====
+node_modules/
+npm-debug.log
+yarn-error.log
+*.tsbuildinfo
+
+# ===== Docker (optional) =====
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+
+# ===== My custom additions (if needed) =====
+*.pem
+*.key
+*.crt
