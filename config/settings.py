@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret-key')
 DEBUG = os.getenv('DEBUG', False)
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = []
 
 
 INSTALLED_APPS = [
@@ -102,11 +102,6 @@ SWAGGER_SETTINGS = {
             'name': 'Authorization',
             'in': 'header'
       },
-      'OAUTH2_CONFIG': {
-            'clientId': 'yourAppClientId',
-            'clientSecret': 'yourAppClientSecret',
-            'appName': 'your application name'
-        },
    }
 }
 
