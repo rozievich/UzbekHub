@@ -38,6 +38,11 @@ class UserSignUpSerializer(serializers.Serializer):
             return attrs
         raise ValueError('Password error!')
 
+    def validate_email(self, value):
+        if CustomUser.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already exists")
+        return value
+
 
 # User sign-in serializer
 class UserSignInSerializer(serializers.Serializer):

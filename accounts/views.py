@@ -33,8 +33,6 @@ class CustomUserRegisterAPIView(CreateAPIView):
         serializer = UserSignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.data
-        if CustomUser.objects.filter(email=data['email']).exists():
-            raise ValueError("Email already is exists")
         user = CustomUser(**data)
         send_to_gmail.apply_async(args=[user.email], countdown=5)
         cache.set(f'user:{user.email}', user, timeout=settings.CACHE_TTL)
