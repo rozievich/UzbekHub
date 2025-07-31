@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .tokens import get_tokens_for_user
 from .tasks import send_to_gmail
@@ -13,7 +13,8 @@ from .serializers import (
     CustomTokenSerializer,
     EmailVerificationSerializer,
     UserSignInSerializer,
-    UserSignUpSerializer
+    UserSignUpSerializer,
+    CustomUserMyProfileSerializer
 )
 
 
@@ -57,6 +58,7 @@ class EmailVerifyCreateAPIView(CreateAPIView):
         return Response({"message": 'Code is expired or invalid'})
 
 
+# CustomUserSignInAPIView view
 class CustomUserSignInAPIView(APIView):
     permission_classes = (AllowAny,)
     
@@ -65,3 +67,19 @@ class CustomUserSignInAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         user = CustomUser.objects.get(email=serializer.data['email'])
         return Response({'status': True, 'email': serializer.data['email'], 'token': get_tokens_for_user(user)})
+
+
+# CustomUserMyProfileAPIView view
+class CustomUserMyProfileAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = CustomUserMyProfileSerializer
+
+    def get(self, request, *args, **kwargs):
+        serializer = self.serializer_class(request.user)
+        return Response(serializer.data)
+
+    def patch(self, request, *args, **kwargs):
+        serializer = self.serializer_class(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(self.serializer_class(user).data)

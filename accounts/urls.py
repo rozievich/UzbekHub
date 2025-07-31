@@ -5,7 +5,8 @@ from accounts.views import (
     CustomTokenView,
     CustomUserRegisterAPIView,
     EmailVerifyCreateAPIView,
-    CustomUserSignInAPIView
+    CustomUserSignInAPIView,
+    CustomUserMyProfileAPIView
 )
 
 
@@ -16,4 +17,5 @@ urlpatterns = [
     path('signup/', CustomUserRegisterAPIView.as_view(), name='user_signup'),
     path('email-verify/', EmailVerifyCreateAPIView.as_view(), name='email_verify'),
     path('signin/', CustomUserSignInAPIView.as_view(), name='user_signin'),
+    path('profile/', CustomUserMyProfileAPIView.as_view(), name='user_my_profile'),
 ]

@@ -61,3 +61,12 @@ class UserSignInSerializer(serializers.Serializer):
 # Email verification serializer
 class EmailVerificationSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=5)
+
+
+# CustomUserMyProfileSerializer
+class CustomUserMyProfileSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ("first_name", "last_name", "email", "bio", "profile_picture", "is_active", "is_staff", "date_joined", "last_login", "password")
