@@ -9,9 +9,10 @@ from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
-from .tasks import send_to_gmail, send_password_reset_email
 from .models import CustomUser
+from .tasks import send_to_gmail, send_password_reset_email
 from .serializers import (
     CustomTokenSerializer,
     EmailVerificationSerializer,
@@ -132,3 +133,15 @@ class CustomUserMyProfileAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(self.serializer_class(user).data)
+
+
+# GoogleLoginAPIView view
+class GoogleLoginAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'error': 'Token required'}, status=400)
+        tokens = oauth2_sign_in(token)
+        return Response(tokens)
