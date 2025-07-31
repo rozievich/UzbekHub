@@ -70,3 +70,22 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ("first_name", "last_name", "email", "bio", "profile_picture", "is_active", "is_staff", "date_joined", "last_login", "password")
+
+
+# Forget password serializer
+class ForgetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=128)
+
+
+# Reset password serializer
+class ResetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(min_length=8, max_length=128)
+    confirm_password = serializers.CharField(min_length=8, max_length=128, write_only=True)
+
+    def validate(self, attrs):
+        new_password = attrs.get('new_password')
+        confirm_password = attrs.get('confirm_password')
+        if new_password and confirm_password and new_password == confirm_password:
+            attrs['new_password'] = make_password(new_password)
+            return attrs
+        raise ValueError('Password error!')

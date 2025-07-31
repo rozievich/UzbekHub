@@ -15,10 +15,27 @@ def send_to_gmail(email):
     cache.set(f'{settings.CACHE_KEY_PREFIX}:{otp_code}', email, timeout=settings.CACHE_TTL)
     subject = 'Your UzbekHub verification code'
 
-    message = render_to_string(f'email_template.html', {'code': otp_code})
+    message = render_to_string('email_template.html', {'code': otp_code})
 
     recipient_list = [email]
 
+    email = EmailMessage(subject, message, EMAIL_HOST_USER, recipient_list)
+    email.content_subtype = 'html'
+    result = email.send()
+    return result
+
+
+@shared_task
+def send_password_reset_email(email, reset_link):
+    user = cache.get(f'password_reset:{reset_link}')
+    if not user:
+        return False
+
+    subject = 'Your UzbekHub password recovery request'
+    message = render_to_string('forget_password.html', {'reset_link': f"{settings.FRONTEND_URL}/reset-password/{reset_link}/"})
+
+    recipient_list = [email]
+    
     email = EmailMessage(subject, message, EMAIL_HOST_USER, recipient_list)
     email.content_subtype = 'html'
     result = email.send()
