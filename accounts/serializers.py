@@ -50,7 +50,7 @@ class UserSignInSerializer(serializers.Serializer):
         user = CustomUser.objects.filter(email=email).first()
         if user and user.check_password(password):
             return attrs
-        raise ValueError('Invalid Password or Email')
+        raise serializers.ValidationError("Incorrect email or password")
 
 
 # Email verification serializer
