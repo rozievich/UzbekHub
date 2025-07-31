@@ -1,9 +1,11 @@
+from hashlib import new
 from uuid import uuid4
 from django.conf import settings
 from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
+from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
@@ -110,7 +112,7 @@ class NewPasswordAPIView(APIView):
             return Response({"error": "User with this email does not exist"}, status=404)
         
         new_password = serializer.data.get('new_password')
-        user.set_password(new_password)
+        user.password = make_password(new_password)
         user.save()
         cache.delete(f'password_reset:{reset_link}')
         return Response({"message": "Your password has been successfully updated"})
