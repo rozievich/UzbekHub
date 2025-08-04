@@ -41,3 +41,8 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
+    @property
+    def picture_url(self):
+        if self.profile_picture:
+            return self.profile_picture.url
+        return "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small_2x/default-avatar-icon-of-social-media-user-vector.jpg"

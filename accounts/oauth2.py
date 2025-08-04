@@ -22,6 +22,7 @@ def oauth2_sign_in(token):
         
         first_name = response.get('given_name', '')
         last_name = response.get('family_name', '')
+        picture = response.get('picture', None)
 
         password = make_password(email + settings.SECRET_KEY)
         user, created = CustomUser.objects.get_or_create(
@@ -31,6 +32,7 @@ def oauth2_sign_in(token):
                 'last_name': last_name,
                 'password': password,
                 'is_active': True,
+                'profile_picture': picture,
             }
         )
         if not created:

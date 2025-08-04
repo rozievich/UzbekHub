@@ -1,4 +1,3 @@
-from hashlib import new
 from uuid import uuid4
 from django.conf import settings
 from django.core.cache import cache
@@ -6,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
 from django.contrib.auth.hashers import make_password
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
@@ -36,6 +37,7 @@ class CustomUserRegisterAPIView(CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSignUpSerializer
 
+    @swagger_auto_schema(request_body=UserSignUpSerializer)
     def post(self, request, *args, **kwargs):
         serializer = UserSignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -51,6 +53,7 @@ class EmailVerifyCreateAPIView(CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = EmailVerificationSerializer
 
+    @swagger_auto_schema(request_body=EmailVerificationSerializer)
     def post(self, request, *args, **kwargs):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -67,9 +70,11 @@ class EmailVerifyCreateAPIView(CreateAPIView):
 # CustomUserSignInAPIView view
 class CustomUserSignInAPIView(APIView):
     permission_classes = (AllowAny,)
+    serializer_class = UserSignInSerializer
     
+    @swagger_auto_schema(request_body=UserSignInSerializer)
     def post(self, request, *args, **kwargs):
-        serializer = UserSignInSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = CustomUser.objects.get(email=serializer.data['email'])
         return Response({'status': True, 'email': serializer.data['email'], 'token': get_tokens_for_user(user)})
@@ -80,6 +85,7 @@ class ForgotPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = ForgetPasswordSerializer
 
+    @swagger_auto_schema(request_body=ForgetPasswordSerializer)
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -100,6 +106,7 @@ class NewPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = ResetPasswordSerializer
 
+    @swagger_auto_schema(request_body=ResetPasswordSerializer)
     def post(self, request, reset_link, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -128,6 +135,7 @@ class CustomUserMyProfileAPIView(APIView):
         serializer = self.serializer_class(request.user)
         return Response(serializer.data)
 
+    @swagger_auto_schema(request_body=CustomUserMyProfileSerializer)
     def patch(self, request, *args, **kwargs):
         serializer = self.serializer_class(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -139,6 +147,12 @@ class CustomUserMyProfileAPIView(APIView):
 class GoogleLoginAPIView(APIView):
     permission_classes = (AllowAny,)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google OAuth token')
+        }
+    ))
     def post(self, request):
         token = request.data.get('token')
         if not token:
