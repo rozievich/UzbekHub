@@ -1,11 +1,12 @@
 from uuid import uuid4
+from drf_yasg import openapi
 from django.conf import settings
 from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
@@ -129,6 +130,7 @@ class NewPasswordAPIView(APIView):
 class CustomUserMyProfileAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = CustomUserMyProfileSerializer
+    parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(tags=["accounts"])
     def get(self, request, *args, **kwargs):

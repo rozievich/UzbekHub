@@ -65,11 +65,14 @@ class EmailVerificationSerializer(serializers.Serializer):
 
 # CustomUserMyProfileSerializer
 class CustomUserMyProfileSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=False)
+    email = serializers.EmailField(read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ("first_name", "last_name", "email", "bio", "picture_url", "is_active", "is_staff", "date_joined", "last_login", "password")
+        fields = ("first_name", "last_name", "email", "bio", "profile_picture", "phone", "location", "is_active", "is_staff", "date_joined", "last_login", "password")
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
