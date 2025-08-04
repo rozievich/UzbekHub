@@ -120,7 +120,7 @@ class NewPasswordAPIView(APIView):
             return Response({"error": "User with this email does not exist"}, status=404)
         
         new_password = serializer.data.get('new_password')
-        user.password = make_password(new_password)
+        user.set_password(new_password)
         user.save()
         cache.delete(f'password_reset:{reset_link}')
         return Response({"message": "Your password has been successfully updated"})

@@ -71,6 +71,15 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ("first_name", "last_name", "email", "bio", "profile_picture", "is_active", "is_staff", "date_joined", "last_login", "password")
 
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+
 
 # Forget password serializer
 class ForgetPasswordSerializer(serializers.Serializer):
@@ -86,6 +95,6 @@ class ResetPasswordSerializer(serializers.Serializer):
         new_password = attrs.get('new_password')
         confirm_password = attrs.get('confirm_password')
         if new_password and confirm_password and new_password == confirm_password:
-            attrs['new_password'] = make_password(new_password)
+            attrs['new_password'] = new_password
             return attrs
         raise ValueError('Password error!')
