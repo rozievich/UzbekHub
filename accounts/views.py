@@ -4,7 +4,6 @@ from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
-from django.contrib.auth.hashers import make_password
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -29,7 +28,7 @@ from .serializers import (
 # CustomToken view
 class CustomTokenView(TokenObtainPairView):
     serializer_class = CustomTokenSerializer
-
+    
 
 # CustomUserRegisterAPIView view
 class CustomUserRegisterAPIView(CreateAPIView):
@@ -37,7 +36,7 @@ class CustomUserRegisterAPIView(CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSignUpSerializer
 
-    @swagger_auto_schema(request_body=UserSignUpSerializer)
+    @swagger_auto_schema(request_body=UserSignUpSerializer, tags=["accounts"])
     def post(self, request, *args, **kwargs):
         serializer = UserSignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -53,7 +52,7 @@ class EmailVerifyCreateAPIView(CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = EmailVerificationSerializer
 
-    @swagger_auto_schema(request_body=EmailVerificationSerializer)
+    @swagger_auto_schema(request_body=EmailVerificationSerializer, tags=["accounts"])
     def post(self, request, *args, **kwargs):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,7 +71,7 @@ class CustomUserSignInAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSignInSerializer
     
-    @swagger_auto_schema(request_body=UserSignInSerializer)
+    @swagger_auto_schema(request_body=UserSignInSerializer, tags=["accounts"])
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -85,7 +84,7 @@ class ForgotPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = ForgetPasswordSerializer
 
-    @swagger_auto_schema(request_body=ForgetPasswordSerializer)
+    @swagger_auto_schema(request_body=ForgetPasswordSerializer, tags=["accounts"])
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -106,7 +105,7 @@ class NewPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = ResetPasswordSerializer
 
-    @swagger_auto_schema(request_body=ResetPasswordSerializer)
+    @swagger_auto_schema(request_body=ResetPasswordSerializer, tags=["accounts"])
     def post(self, request, reset_link, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -131,11 +130,12 @@ class CustomUserMyProfileAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = CustomUserMyProfileSerializer
 
+    @swagger_auto_schema(tags=["accounts"])
     def get(self, request, *args, **kwargs):
         serializer = self.serializer_class(request.user)
         return Response(serializer.data)
 
-    @swagger_auto_schema(request_body=CustomUserMyProfileSerializer)
+    @swagger_auto_schema(request_body=CustomUserMyProfileSerializer, tags=["accounts"])
     def patch(self, request, *args, **kwargs):
         serializer = self.serializer_class(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -152,7 +152,7 @@ class GoogleLoginAPIView(APIView):
         properties={
             'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google OAuth token')
         }
-    ))
+    ), tags=["accounts"])
     def post(self, request):
         token = request.data.get('token')
         if not token:
