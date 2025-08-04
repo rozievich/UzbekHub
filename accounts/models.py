@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 
-from .validators import validate_phone_number
+from .validators import validate_phone_number, validate_username
 
 
 # Custom User Manager
@@ -24,7 +24,7 @@ class CustomUserManager(BaseUserManager):
 
 # Custom User Model
 class CustomUser(AbstractUser):
-    username = None
+    username = models.CharField(max_length=25, blank=True, null=True, validators=[validate_username])
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=30, blank=True, null=True)
     last_name = models.CharField(max_length=30, blank=True, null=True)

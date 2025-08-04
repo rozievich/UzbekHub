@@ -9,7 +9,8 @@ from accounts.views import (
     CustomUserMyProfileAPIView,
     ForgotPasswordAPIView,
     NewPasswordAPIView,
-    GoogleLoginAPIView
+    GoogleLoginAPIView,
+    CheckUsernameAPIView
 )
 
 
@@ -23,4 +24,5 @@ urlpatterns = [
     path('signin/', CustomUserSignInAPIView.as_view(), name='user_signin'),
     path('oauth2/google/', GoogleLoginAPIView.as_view(), name='google_login'),
     path('profile/', CustomUserMyProfileAPIView.as_view(), name='user_my_profile'),
+    path('check/username/', CheckUsernameAPIView.as_view(), name="check_username")
 ]

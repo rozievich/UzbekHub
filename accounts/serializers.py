@@ -1,3 +1,4 @@
+import re
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
@@ -72,7 +73,7 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("first_name", "last_name", "email", "bio", "profile_picture", "phone", "location", "is_active", "is_staff", "date_joined", "last_login", "password")
+        fields = ("first_name", "last_name", "email", "username", "bio", "profile_picture", "phone", "location", "is_active", "is_staff", "date_joined", "last_login", "password")
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
@@ -101,3 +102,26 @@ class ResetPasswordSerializer(serializers.Serializer):
             attrs['new_password'] = new_password
             return attrs
         raise ValueError('Password error!')
+
+
+# CheckUsernameAPI View
+class CheckUsernameSerializer(serializers.Serializer):
+    username = serializers.CharField(min_length=4, max_length=25)
+
+    def validate_username(self, value):
+        if not re.match(r'^[A-Za-z0-9._]+$', value):
+            raise serializers.ValidationError(
+                "Username must contain only letters, numbers, periods, and underscores."
+            )
+
+        if value[0] in "._" or value[-1] in "._":
+            raise serializers.ValidationError(
+                "Username must not start or end with '.' or '_'."
+            )
+
+        if '__' in value or '..' in value or '._' in value or '_.' in value:
+            raise serializers.ValidationError(
+                "Username must not contain consecutive '.' or '_' characters."
+            )
+
+        return value

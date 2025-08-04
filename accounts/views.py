@@ -21,7 +21,8 @@ from .serializers import (
     UserSignUpSerializer,
     CustomUserMyProfileSerializer,
     ForgetPasswordSerializer,
-    ResetPasswordSerializer
+    ResetPasswordSerializer,
+    CheckUsernameSerializer
 )
 
 
@@ -161,3 +162,30 @@ class GoogleLoginAPIView(APIView):
             return Response({'error': 'Token required'}, status=400)
         tokens = oauth2_sign_in(token)
         return Response(tokens)
+
+
+# Checkusername view
+class CheckUsernameAPIView(APIView):
+    permission_classes = (IsAuthenticated, )
+    serializer_class = CheckUsernameSerializer
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'username', openapi.IN_QUERY,
+                description="Tekshiriladigan username",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        tags=["accounts"]
+    )
+    def get(self, request, *args, **kwargs):
+        serializer = CheckUsernameSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return Response({"errors": serializer.errors}, status=400)
+
+        username = serializer.validated_data['username']
+        exists = CustomUser.objects.filter(username=username).exists()
+
+        return Response({"available": not exists}, status=200)
