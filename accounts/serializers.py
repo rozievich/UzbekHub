@@ -7,24 +7,6 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomUser
 
 
-# JWT auth serializer
-class CustomTokenSerializer(TokenObtainPairSerializer):
-    username_field = "email"
-
-    def validate(self, attrs):
-        email = attrs.get("email")
-        password = attrs.get("password")
-
-        user = authenticate(request=self.context.get("request"), email=email, password=password)
-
-        if user is None:
-            raise serializers.ValidationError("Incorrect phone number or password")
-        
-        data = super().validate(attrs)
-        data['full_name'] = user.get_full_name()
-        return data
-
-
 # User registration serializer
 class UserSignUpSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=128)
@@ -62,6 +44,11 @@ class UserSignInSerializer(serializers.Serializer):
 # Email verification serializer
 class EmailVerificationSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=5)
+
+    def validate_code(self, value):
+        if value.isdigit() and len(value) == 5:
+            return value
+        raise serializers.ValidationError("The code must consist of 5 digits.")
 
 
 # CustomUserMyProfileSerializer
@@ -125,3 +112,21 @@ class CheckUsernameSerializer(serializers.Serializer):
             )
 
         return value
+
+
+# ChangeEmailSerializer
+class ChangeEmailSerializer(serializers.Serializer):
+    new_email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        email = attrs.get('new_email')
+        password = attrs.get('password')
+        user = self.context["request"].user
+
+        if CustomUser.objects.filter(email=email).exists():
+            raise serializers.ValidationError("This email is already registered in the system.")
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError({"current_password": "The password is incorrect."})
+        return attrs

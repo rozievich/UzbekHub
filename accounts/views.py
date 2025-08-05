@@ -15,22 +15,17 @@ from .tokens import get_tokens_for_user
 from .models import CustomUser
 from .tasks import send_to_gmail, send_password_reset_email
 from .serializers import (
-    CustomTokenSerializer,
     EmailVerificationSerializer,
     UserSignInSerializer,
     UserSignUpSerializer,
     CustomUserMyProfileSerializer,
     ForgetPasswordSerializer,
     ResetPasswordSerializer,
-    CheckUsernameSerializer
+    CheckUsernameSerializer,
+    ChangeEmailSerializer
 )
 
 
-
-# CustomToken view
-class CustomTokenView(TokenObtainPairView):
-    serializer_class = CustomTokenSerializer
-    
 
 # CustomUserRegisterAPIView view
 class CustomUserRegisterAPIView(CreateAPIView):
@@ -38,7 +33,7 @@ class CustomUserRegisterAPIView(CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSignUpSerializer
 
-    @swagger_auto_schema(request_body=UserSignUpSerializer, tags=["accounts"])
+    @swagger_auto_schema(request_body=UserSignUpSerializer, tags=["auth"])
     def post(self, request, *args, **kwargs):
         serializer = UserSignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -54,7 +49,7 @@ class EmailVerifyCreateAPIView(CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = EmailVerificationSerializer
 
-    @swagger_auto_schema(request_body=EmailVerificationSerializer, tags=["accounts"])
+    @swagger_auto_schema(request_body=EmailVerificationSerializer, tags=["auth"])
     def post(self, request, *args, **kwargs):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -73,7 +68,7 @@ class CustomUserSignInAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSignInSerializer
     
-    @swagger_auto_schema(request_body=UserSignInSerializer, tags=["accounts"])
+    @swagger_auto_schema(request_body=UserSignInSerializer, tags=["auth"])
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -86,7 +81,7 @@ class ForgotPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = ForgetPasswordSerializer
 
-    @swagger_auto_schema(request_body=ForgetPasswordSerializer, tags=["accounts"])
+    @swagger_auto_schema(request_body=ForgetPasswordSerializer, tags=["auth"])
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -107,7 +102,7 @@ class NewPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
     serializer_class = ResetPasswordSerializer
 
-    @swagger_auto_schema(request_body=ResetPasswordSerializer, tags=["accounts"])
+    @swagger_auto_schema(request_body=ResetPasswordSerializer, tags=["auth"])
     def post(self, request, reset_link, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -155,7 +150,7 @@ class GoogleLoginAPIView(APIView):
         properties={
             'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google OAuth token')
         }
-    ), tags=["accounts"])
+    ), tags=["auth"])
     def post(self, request):
         token = request.data.get('token')
         if not token:
@@ -186,6 +181,40 @@ class CheckUsernameAPIView(APIView):
             return Response({"errors": serializer.errors}, status=400)
 
         username = serializer.validated_data['username']
-        exists = CustomUser.objects.filter(username=username).exists()
+        exists = CustomUser.objects.filter(username=username.lower()).exists()
 
         return Response({"available": not exists}, status=200)
+
+
+# Change Email View
+class ChangeEmailAPIView(APIView):
+    serializer_class = ChangeEmailSerializer
+    permission_classes = (IsAuthenticated, )
+
+    @swagger_auto_schema(request_body=ChangeEmailSerializer, tags=['accounts'])
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.data.get("new_email")
+        send_to_gmail.apply_async(args=[email], countdown=5)
+        cache.set(f'change_email:{email}', request.user, timeout=settings.CACHE_TTL)
+        return Response({"message": "A verification code has been sent to your new email address to update your email."}, status=200)
+
+
+class AcceptChangeEmailAPIView(APIView):
+    serializer_class = EmailVerificationSerializer
+
+    @swagger_auto_schema(request_body=EmailVerificationSerializer, tags=['accounts'])
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.data.get('code')
+        if code and (email := cache.get(f'{settings.CACHE_KEY_PREFIX}:{code}')):
+            if user := cache.get(f'user:{email}'):
+                cache.delete(f'{settings.CACHE_KEY_PREFIX}:{code}')
+                cache.delete(f'user:{email}')
+                user.email = email
+                user.save()
+                return Response({"message": 'Email successfully updated'})
+        return Response({"message": 'Code is expired or invalid'})
