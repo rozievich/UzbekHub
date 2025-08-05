@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .oauth2 import oauth2_sign_in
