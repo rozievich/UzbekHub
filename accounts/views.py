@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import CreateAPIView
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -13,6 +14,7 @@ from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
 from .models import CustomUser
 from .tasks import send_to_gmail, send_password_reset_email
+from .permissions import IsAdminPermission
 from .serializers import (
     EmailVerificationSerializer,
     UserSignInSerializer,
@@ -217,3 +219,11 @@ class AcceptChangeEmailAPIView(APIView):
                 user.save()
                 return Response({"message": 'Email successfully updated'})
         return Response({"message": 'Code is expired or invalid'})
+
+
+# Adminstrators APIs
+class AdminUserModelViewSet(ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserMyProfileSerializer
+    permission_classes = (IsAuthenticated, IsAdminPermission)
+    http_method_names = ("get", "delete")

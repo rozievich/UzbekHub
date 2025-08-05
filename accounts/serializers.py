@@ -69,6 +69,28 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def validate_username(self, value):
+        if CustomUser.objects.filter(username=value.lower()).exists():
+            raise serializers.ValidationError(
+                "Sorry, this username is taken."
+            )
+        if not re.match(r'^[A-Za-z0-9._]+$', value):
+            raise serializers.ValidationError(
+                "Username must contain only letters, numbers, periods, and underscores."
+            )
+
+        if value[0] in "._" or value[-1] in "._":
+            raise serializers.ValidationError(
+                "Username must not start or end with '.' or '_'."
+            )
+
+        if '__' in value or '..' in value or '._' in value or '_.' in value:
+            raise serializers.ValidationError(
+                "Username must not contain consecutive '.' or '_' characters."
+            )
+
+        return value
+
 
 # Forget password serializer
 class ForgetPasswordSerializer(serializers.Serializer):

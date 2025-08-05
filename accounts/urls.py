@@ -1,4 +1,5 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
 from accounts.views import (
     CustomUserRegisterAPIView,
@@ -10,8 +11,13 @@ from accounts.views import (
     GoogleLoginAPIView,
     CheckUsernameAPIView,
     ChangeEmailAPIView,
-    AcceptChangeEmailAPIView
+    AcceptChangeEmailAPIView,
+
+    AdminUserModelViewSet
 )
+
+router = DefaultRouter()
+router.register(r'admin/user', AdminUserModelViewSet, basename="admins")
 
 
 urlpatterns = [
@@ -25,5 +31,6 @@ urlpatterns = [
     path('account/profile/', CustomUserMyProfileAPIView.as_view(), name='user_my_profile'),
     path('account/check/username/', CheckUsernameAPIView.as_view(), name="check_username"),
     path('account/change-email/', ChangeEmailAPIView.as_view(), name="change_email"),
-    path('account/change-email/confirm/', AcceptChangeEmailAPIView.as_view(), name="change_email_confirm")
+    path('account/change-email/confirm/', AcceptChangeEmailAPIView.as_view(), name="change_email_confirm"),
+    path('', include(router.urls))
 ]
