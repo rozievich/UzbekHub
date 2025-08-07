@@ -58,7 +58,7 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("first_name", "last_name", "email", "username", "bio", "profile_picture", "phone", "location", "is_active", "is_staff", "date_joined", "last_login", "password")
+        fields = ("id", "first_name", "last_name", "email", "username", "bio", "profile_picture", "phone", "location", "is_active", "is_staff", "date_joined", "last_login", "password")
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)

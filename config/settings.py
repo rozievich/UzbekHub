@@ -138,7 +138,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-GOOGLE_CLIENT_ID = '320049245870-4b6sb0f95dkt52vcr5tmcrm7u0su8bo2.apps.googleusercontent.com'
+GOOGLE_CLIENT_ID = '511430879592-7sns7n9se04m74ma6pqrt7k8kujr1th7.apps.googleusercontent.com'
 
 CACHES = {
     'default': {
