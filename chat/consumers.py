@@ -30,13 +30,13 @@ class UserChatConsumer(WebsocketConsumer):
         self.close(code=code)
 
     def receive(self, text_data=None):
-        message_text, receiver_username, file_url = self._extract_message_data(text_data)
+        message_text, receiver_user_id, file_url = self._extract_message_data(text_data)
 
-        if not receiver_username and not (message_text or file_url):
+        if not receiver_user_id and not (message_text or file_url):
             self.close()
             return
 
-        receiver_user = self._get_receiver_user(receiver_username)
+        receiver_user = self._get_receiver_user(receiver_user_id)
         if not receiver_user or receiver_user == self.sender_user:
             self.close()
             return
@@ -74,9 +74,9 @@ class UserChatConsumer(WebsocketConsumer):
         except json.JSONDecodeError:
             return None, None, None
 
-    def _get_receiver_user(self, receiver_username: str):
+    def _get_receiver_user(self, receiver_user_id: str):
         """Get receiver user info"""
-        return CustomUser.objects.filter(username=receiver_username).first()
+        return CustomUser.objects.filter(id=receiver_user_id).first()
 
     def _generate_user_chat_name(self, receiver_user):
         """Generate chat channel name"""
