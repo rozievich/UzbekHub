@@ -8,6 +8,7 @@ class ChatMessage(models.Model):
     to_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="received_messages")
     message = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to="private_files/", blank=True, null=True)
+    reaction = models.CharField(max_length=128, blank=True, null=True)
     is_delivery = models.BooleanField(default=False)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
