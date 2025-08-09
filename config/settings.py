@@ -151,6 +151,12 @@ CACHES = {
     }
 }
 
+CELERY_BEAT_SCHEDULE = {
+    "archive_stories_every_hour": {
+        "task": "stories.tasks.check_story_time",
+        "schedule": 60,
+    },
+}
 
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
