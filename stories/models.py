@@ -1,17 +1,16 @@
 from django.db import models
-from uuid import uuid4
 
 from accounts.models import CustomUser
 
 
 # Create your models here.
 class Story(models.Model):
-    story_id = models.CharField(max_length=128, default=uuid4())
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     media = models.FileField(upload_to="stories/")
     caption = models.CharField(max_length=500, blank=True, null=True)
-    marked = models.ManyToManyField(CustomUser, related_name="marked_users")
+    marked = models.ManyToManyField(CustomUser, related_name="marked_users", blank=True)
     is_active = models.BooleanField(default=True)
+    is_private = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

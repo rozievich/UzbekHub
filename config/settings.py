@@ -28,7 +28,8 @@ INSTALLED_APPS = [
     'drf_yasg',
     # Custom apps
     'accounts.apps.AccountsConfig',
-    'chat.apps.ChatConfig'
+    'chat.apps.ChatConfig',
+    'stories.apps.StoriesConfig'
 ]
 
 MIDDLEWARE = [
