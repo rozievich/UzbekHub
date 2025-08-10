@@ -212,9 +212,9 @@ class AcceptChangeEmailAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         code = serializer.data.get('code')
         if code and (email := cache.get(f'{settings.CACHE_KEY_PREFIX}:{code}')):
-            if user := cache.get(f'user:{email}'):
+            if user := cache.get(f'change_email:{email}'):
                 cache.delete(f'{settings.CACHE_KEY_PREFIX}:{code}')
-                cache.delete(f'user:{email}')
+                cache.delete(f'change_email:{email}')
                 user.email = email
                 user.save()
                 return Response({"message": 'Email successfully updated'})
