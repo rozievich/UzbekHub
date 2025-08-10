@@ -2,7 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 
-from .models import CustomUser
+from .models import CustomUser, Location
 from chat.consumers import redis_client
 
 
@@ -50,16 +50,32 @@ class EmailVerificationSerializer(serializers.Serializer):
         raise serializers.ValidationError("The code must consist of 5 digits.")
 
 
+# Location Model Serializer
+class LocationModelSerializer(serializers.ModelSerializer):
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Location
+        fields = "__all__"
+        extra_kwargs = {
+            "country": {"read_only": True},
+            "city": {"read_only": True},
+            "county": {"read_only": True},
+            "neighbourhood": {"read_only": True},
+        }
+
+
 # CustomUserMyProfileSerializer
 class CustomUserMyProfileSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     email = serializers.EmailField(read_only=True)
     is_staff = serializers.BooleanField(read_only=True)
     is_active = serializers.BooleanField(read_only=True)
+    location = LocationModelSerializer(read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ("id", "first_name", "last_name", "email", "username", "bio", "profile_picture", "phone", "location", "is_active", "is_staff", "date_joined", "last_login", "password")
+        fields = ("id", "first_name", "last_name", "email", "username", "bio", "location", "profile_picture", "phone", "is_active", "is_staff", "date_joined", "last_login", "password")
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
@@ -71,10 +87,17 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
         return instance
 
     def validate_username(self, value):
-        if CustomUser.objects.filter(username=value.lower()).exists():
+        value = value.lower()
+        user_qs = CustomUser.objects.filter(username=value)
+
+        if self.instance:
+            user_qs = user_qs.exclude(pk=self.instance.pk)
+
+        if user_qs.exists():
             raise serializers.ValidationError(
                 "Sorry, this username is taken."
             )
+
         if not re.match(r'^[A-Za-z0-9._]+$', value):
             raise serializers.ValidationError(
                 "Username must contain only letters, numbers, periods, and underscores."

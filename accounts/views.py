@@ -12,9 +12,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
-from .models import CustomUser
+from .models import CustomUser, Location
 from .tasks import send_to_gmail, send_password_reset_email
 from .permissions import IsAdminPermission
+from stories.permissions import IsOwnerPermission
 from .serializers import (
     EmailVerificationSerializer,
     UserSignInSerializer,
@@ -23,7 +24,8 @@ from .serializers import (
     ForgetPasswordSerializer,
     ResetPasswordSerializer,
     CheckUsernameSerializer,
-    ChangeEmailSerializer
+    ChangeEmailSerializer,
+    LocationModelSerializer
 )
 
 
@@ -227,3 +229,14 @@ class AdminUserModelViewSet(ModelViewSet):
     serializer_class = CustomUserMyProfileSerializer
     permission_classes = (IsAuthenticated, IsAdminPermission)
     http_method_names = ("get", "delete")
+
+
+# Location modelViewset
+class LocationModelViewSet(ModelViewSet):
+    queryset = Location.objects.all()
+    serializer_class = LocationModelSerializer
+    permission_classes = (IsAuthenticated, IsOwnerPermission)
+
+    def create(self, request, *args, **kwargs):
+
+        return super().create(request, *args, **kwargs)

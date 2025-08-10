@@ -12,12 +12,13 @@ from accounts.views import (
     CheckUsernameAPIView,
     ChangeEmailAPIView,
     AcceptChangeEmailAPIView,
-
-    AdminUserModelViewSet
+    AdminUserModelViewSet,
+    LocationModelViewSet
 )
 
 router = DefaultRouter()
 router.register(r'admin/user', AdminUserModelViewSet, basename="admins")
+router.register('location', LocationModelViewSet, basename="locations")
 
 
 urlpatterns = [
