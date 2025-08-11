@@ -2,6 +2,7 @@ from uuid import uuid4
 from drf_yasg import openapi
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -240,3 +241,19 @@ class LocationModelViewSet(ModelViewSet):
     def create(self, request, *args, **kwargs):
 
         return super().create(request, *args, **kwargs)
+
+
+# Username and FistName LastName and email search
+class ProfileSearchAPIView(APIView):
+    serializer_class = CustomUserMyProfileSerializer
+    permission_classes = (AllowAny, )
+
+    def get(self, request, key):
+        query_users = CustomUser.objects.filter(
+            Q(username__icontains=key) |
+            Q(first_name__icontains=key) |
+            Q(last_name__icontains=key) |
+            Q(email__icontains=key)
+        )
+        serializer = self.serializer_class(query_users, many=True)
+        return Response(serializer.data, status=200)

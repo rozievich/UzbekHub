@@ -13,6 +13,7 @@ from accounts.views import (
     ChangeEmailAPIView,
     AcceptChangeEmailAPIView,
     AdminUserModelViewSet,
+    ProfileSearchAPIView,
     LocationModelViewSet
 )
 
@@ -33,5 +34,6 @@ urlpatterns = [
     path('account/check/username/', CheckUsernameAPIView.as_view(), name="check_username"),
     path('account/change-email/', ChangeEmailAPIView.as_view(), name="change_email"),
     path('account/change-email/confirm/', AcceptChangeEmailAPIView.as_view(), name="change_email_confirm"),
+    path('account/search/<str:key>/', ProfileSearchAPIView.as_view(), name="profile_search"),
     path('', include(router.urls))
 ]
