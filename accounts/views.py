@@ -6,13 +6,14 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import CreateAPIView
+from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
+from utils.get_location import get_my_location
 from .models import CustomUser, Location
 from .tasks import send_to_gmail, send_password_reset_email
 from .permissions import IsAdminPermission
@@ -232,21 +233,10 @@ class AdminUserModelViewSet(ModelViewSet):
     http_method_names = ("get", "delete")
 
 
-# Location modelViewset
-class LocationModelViewSet(ModelViewSet):
-    queryset = Location.objects.all()
-    serializer_class = LocationModelSerializer
-    permission_classes = (IsAuthenticated, IsOwnerPermission)
-
-    def create(self, request, *args, **kwargs):
-
-        return super().create(request, *args, **kwargs)
-
-
 # Username and FistName LastName and email search
 class ProfileSearchAPIView(APIView):
     serializer_class = CustomUserMyProfileSerializer
-    permission_classes = (AllowAny, )
+    permission_classes = (IsAuthenticated, )
 
     def get(self, request, key):
         query_users = CustomUser.objects.filter(
@@ -257,3 +247,17 @@ class ProfileSearchAPIView(APIView):
         )
         serializer = self.serializer_class(query_users, many=True)
         return Response(serializer.data, status=200)
+
+
+# Locations Views
+class LocationAPIView(CreateAPIView, RetrieveUpdateDestroyAPIView):
+    serializer_class = LocationModelSerializer
+    permission_classes = (IsAuthenticated, IsOwnerPermission)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        lat = serializer.data.get('lat')
+        long = serializer.data.get('long')
+        
+        return super().create(request, *args, **kwargs)
