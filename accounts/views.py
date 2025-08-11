@@ -6,14 +6,14 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import CreateAPIView, UpdateAPIView, DestroyAPIView
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
-from utils.get_location import get_my_location
+from accounts.utils.get_location import get_my_location
 from .models import CustomUser, Location
 from .tasks import send_to_gmail, send_password_reset_email
 from .permissions import IsAdminPermission
@@ -229,7 +229,7 @@ class AcceptChangeEmailAPIView(APIView):
 class AdminUserModelViewSet(ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserMyProfileSerializer
-    permission_classes = (IsAuthenticated, IsAdminPermission)
+    permission_classes = (AllowAny, )
     http_method_names = ("get", "delete")
 
 
@@ -250,14 +250,50 @@ class ProfileSearchAPIView(APIView):
 
 
 # Locations Views
-class LocationAPIView(CreateAPIView, RetrieveUpdateDestroyAPIView):
+class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
     serializer_class = LocationModelSerializer
     permission_classes = (IsAuthenticated, IsOwnerPermission)
 
     def create(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        lat = serializer.data.get('lat')
-        long = serializer.data.get('long')
+
+        lat = serializer.validated_data.get('lat')
+        long = serializer.validated_data.get('long')
+        full_address = get_my_location(lat=str(lat), long=str(long))
         
-        return super().create(request, *args, **kwargs)
+        if full_address:
+            serializer.save(
+                country=full_address.get('country'),
+                city=full_address.get('city'),
+                county=full_address.get('county'),
+                neighbourhood=full_address.get('neighbourhood')
+            )
+        else:
+            serializer.save()
+        return Response(serializer.data, status=201)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        lat = serializer.validated_data.get('lat')
+        long = serializer.validated_data.get('long')
+        full_address = get_my_location(lat=str(lat), long=str(long))
+        
+        if full_address:
+            serializer.save(
+                country=full_address.get('country'),
+                city=full_address.get('city'),
+                county=full_address.get('county'),
+                neighbourhood=full_address.get('neighbourhood')
+            )
+        else:
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def destroy(self, request, *args, **kwargs):
+        Location.objects.filter(owner=request.user).delete()
+        return Response(status=204)

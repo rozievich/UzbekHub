@@ -14,12 +14,11 @@ from accounts.views import (
     AcceptChangeEmailAPIView,
     AdminUserModelViewSet,
     ProfileSearchAPIView,
-    LocationModelViewSet
+    LocationAPIView,
 )
 
 router = DefaultRouter()
 router.register(r'admin/user', AdminUserModelViewSet, basename="admins")
-router.register('location', LocationModelViewSet, basename="locations")
 
 
 urlpatterns = [
@@ -35,5 +34,6 @@ urlpatterns = [
     path('account/change-email/', ChangeEmailAPIView.as_view(), name="change_email"),
     path('account/change-email/confirm/', AcceptChangeEmailAPIView.as_view(), name="change_email_confirm"),
     path('account/search/<str:key>/', ProfileSearchAPIView.as_view(), name="profile_search"),
+    path('account/location/', LocationAPIView.as_view(), name="locations"),
     path('', include(router.urls))
 ]
