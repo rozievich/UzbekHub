@@ -9,7 +9,6 @@ def check_story_time():
     cutoff_time = timezone.now()-timedelta(hours=24)
     expired_stories = Story.objects.filter(
         created_at__lt=cutoff_time,
-        is_archived=False
+        is_active=True
     )
-    expired_stories.update(is_archived=True)
-    
+    expired_stories.update(is_active=False)
