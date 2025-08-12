@@ -5,9 +5,13 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
-from .serializers import StoryModelSerializer
 from .permissions import IsOwnerPermission
-from .models import Story
+from .serializers import (
+    StoryModelSerializer,
+    StoryViewedModelSerializer,
+    StoryReactionModelSerializer
+)
+from .models import Story, StoryViewed, StoryReaction
 
 
 
@@ -63,3 +67,19 @@ class UserPublicStoriesAPIView(APIView):
         user_stories = Story.objects.filter(owner_id=user_id, is_active=True, is_private=False)
         serializer = self.serializer_class(user_stories, many=True)
         return Response(data=serializer.data, status=200)
+
+
+# Story Reactions viewset
+class StoryReactionViewSet(ModelViewSet):
+    queryset = StoryReaction.objects.all()
+    serializer_class = StoryReactionModelSerializer
+    permission_classes = (IsAuthenticated, )
+    http_method_names = ['post', 'patch', 'delete']
+
+
+# Story Viwed viewset
+class StoryViewedModelViewSet(ModelViewSet):
+    queryset = StoryViewed.objects.all()
+    serializer_class = StoryViewedModelSerializer
+    permission_classes = (IsAuthenticated, )
+    http_method_names = ['post', 'patch', 'delete']
