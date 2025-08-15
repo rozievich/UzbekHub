@@ -22,8 +22,8 @@ class ChatMessageListAPIView(ListAPIView):
     permission_classes = (IsAuthenticated, )
 
     def get_queryset(self):
-        username = self.request.user.username
-        return ChatMessage.objects.filter(Q(from_user__username=username) | Q(to_user__username=username))
+        user_id = self.request.user.id
+        return ChatMessage.objects.filter(Q(from_user__id=user_id) | Q(to_user__id=user_id))
 
 
 class ChatUserMessageAPIView(ListAPIView):
