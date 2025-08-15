@@ -9,6 +9,7 @@ class ChatMessage(models.Model):
     message = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to="private_files/", blank=True, null=True)
     reaction = models.CharField(max_length=128, blank=True, null=True)
+    reply_to = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True, related_name="replies")
     is_delivery = models.BooleanField(default=False)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -30,6 +31,9 @@ class ChatGroup(models.Model):
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
     username = models.CharField(max_length=32, unique=True)
+    tags = models.CharField(max_length=32, blank=True, null=True)
+    description = models.CharField(max_length=200, blank=True, null=True)
+    profile_pic = models.FileField(upload_to="group_picture/")
     members = models.ManyToManyField(CustomUser, related_name="chat_groups")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -49,6 +53,7 @@ class GroupMessage(models.Model):
     file = models.FileField(upload_to="group_files/", blank=True, null=True)
     is_delivery = models.ManyToManyField(CustomUser, related_name="delivery_messages", blank=True)
     is_read = models.ManyToManyField(CustomUser, related_name="read_messages", blank=True)
+    reply_to = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True, related_name="group_replies")
     created_at = models.DateTimeField(auto_now_add=True)
     update_at = models.DateTimeField(auto_now=True)
 

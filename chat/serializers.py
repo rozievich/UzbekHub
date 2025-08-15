@@ -7,7 +7,11 @@ from .models import ChatMessage, ChatGroup, GroupMessage
 from .utils import decrypt_message_and_file
 from accounts.models import CustomUser
 
+
+
 class ChatMessageModelSerializer(ModelSerializer):
+    reply_to = PrimaryKeyRelatedField(queryset=ChatMessage.objects.all(), required=False, allow_null=True)
+
     class Meta:
         model = ChatMessage
         fields = "__all__"
@@ -23,16 +27,28 @@ class ChatMessageModelSerializer(ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['message'] = decrypt_message_and_file(representation['message'])
+
+        if instance.reply_to:
+            representation['reply_to'] = {
+                "id": instance.reply_to.id,
+                "message": instance.reply_to.message,
+                "file": instance.reply_to.file.url if instance.reply_to.file else None,
+                "owner": {
+                    "id": instance.reply_to.from_user.id,
+                    "username": instance.reply_to.from_user.username if instance.reply_to.from_user.username else None
+                }
+            }
         return representation
 
 
 class ChatGroupModelSerializer(ModelSerializer):
     owner = HiddenField(default=CurrentUserDefault())
     members = PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True)
+    reply_to = PrimaryKeyRelatedField(queryset=GroupMessage.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = ChatGroup
-        fields = "id", "name", "username", "owner", "created_at", "members"
+        fields = "__all__"
 
     def validate_username(self, username):
         if not re.match(r"^[a-z0-9_]+$", username) or not (5 <= len(username) <= 32):
@@ -50,4 +66,15 @@ class ChatGroupMessageModelSerializer(ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['message'] = decrypt_message_and_file(representation['message'])
+
+        if instance.reply_to:
+            representation['reply_to'] = {
+                "id": instance.reply_to.id,
+                "message": instance.reply_to.message,
+                "file": instance.reply_to.file.url if instance.reply_to.file else None,
+                "owner": {
+                    "id": instance.reply_to.from_user.id,
+                    "username": instance.reply_to.from_user.username if instance.reply_to.from_user.username else None
+                }
+            }
         return representation
