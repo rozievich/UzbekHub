@@ -117,9 +117,9 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         represantation = super().to_representation(instance)
-        # user_status = redis_client.sismember("online_users", represantation['id'])
-        # if user_status:
-        #     represantation['last_login'] = "online"
+        user_status = redis_client.sismember("online_users", represantation['id'])
+        if user_status:
+            represantation['last_login'] = "online"
         represantation['groups'] = [{"id": group.id, "name": group.name, "username": group.username} for group in instance.chat_groups.all()]
         return represantation
     

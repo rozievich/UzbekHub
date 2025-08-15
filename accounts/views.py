@@ -255,7 +255,7 @@ class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
     permission_classes = (IsAuthenticated, IsOwnerPermission)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         lat = serializer.validated_data.get('lat')

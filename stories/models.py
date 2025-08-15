@@ -18,7 +18,7 @@ class Story(models.Model):
         return self.story_id
 
 
-class StoryViwed(models.Model):
+class StoryViewed(models.Model):
     story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name='viewers')
     viewer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     viewed_at = models.DateTimeField(auto_now_add=True)

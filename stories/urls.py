@@ -5,12 +5,15 @@ from .views import (
     StoriesModelViewSet,
     ArchiveStoriesListAPIView,
     ArchiveStoryGetDeleteAPIView,
-    UserPublicStoriesAPIView
+    UserPublicStoriesAPIView,
+    StoryReactionViewSet,
+    StoryViewedModelViewSet
 )
 
 router = DefaultRouter()
 router.register('active', StoriesModelViewSet, basename="stories_viewset")
-
+router.register('reaction', StoryReactionViewSet, basename="stories_reaction")
+router.register('viewed', StoryViewedModelViewSet, basename="stories_viewed")
 
 urlpatterns = [
     path('', include(router.urls)),

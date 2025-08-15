@@ -59,7 +59,7 @@ class UserChatConsumer(WebsocketConsumer):
         online_user = redis_client.sismember("online_users", self.sender_user.id)
         if online_user:
             redis_client.srem("online_users", self.sender_user.id)
-            CustomUser.objects.filter(id=self.sender_user.id).update(last_online=timezone.now())
+            CustomUser.objects.filter(id=self.sender_user.id).update(last_login=timezone.now())
 
     def _check_user_online(self):
         online_user = redis_client.sismember("online_users", self.sender_user.id)
