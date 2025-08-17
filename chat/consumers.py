@@ -30,7 +30,7 @@ class UserChatConsumer(WebsocketConsumer):
         self.close(code=code)
 
     def receive(self, text_data=None):
-        message_text, receiver_user_id, file_url = self._extract_message_data(text_data)
+        message_text, receiver_user_id, file_url, reply_to = self._extract_message_data(text_data)
 
         if not receiver_user_id and not (message_text or file_url):
             self.close()
@@ -42,24 +42,25 @@ class UserChatConsumer(WebsocketConsumer):
             return
 
         self.user_chat_name = self._generate_user_chat_name(receiver_user)
-        self._send_message_to_channel(message_text, file_url, receiver_user)
-        self._save_message(message_text, file_url, receiver_user)
+        self._send_message_to_channel(message_text, file_url, receiver_user, reply_to)
+        self._save_message(message_text, file_url, receiver_user, reply_to)
 
     def chat_message(self, event):
         message = event["message"]
         receiver = event['receiver']
         sender = event['sender']
         file_url = event['file_url']
+        reply_to = event['reply_to']
         created_at = str(timezone.now())
 
         self.send(text_data=json.dumps(
-            {"receiver": receiver, "sender": sender, "message": message, "file_url": file_url, "created_at": created_at}))
+            {"receiver": receiver, "sender": sender, "message": message, "file_url": file_url, "reply_to": reply_to, "created_at": created_at}))
 
     def _update_last_online(self):
         online_user = redis_client.sismember("online_users", self.sender_user.id)
         if online_user:
             redis_client.srem("online_users", self.sender_user.id)
-            CustomUser.objects.filter(id=self.sender_user.id).update(last_login=timezone.now())
+            CustomUser.objects.filter(id=self.sender_user.id).update(last_online=timezone.now())
 
     def _check_user_online(self):
         online_user = redis_client.sismember("online_users", self.sender_user.id)
@@ -70,9 +71,9 @@ class UserChatConsumer(WebsocketConsumer):
         """Extract message data"""
         try:
             json_data = json.loads(text_data)
-            return json_data.get('message'), json_data.get('username'), json_data.get('file_url')
+            return json_data.get('message'), json_data.get('user_id'), json_data.get('file_url'), json_data.get('reply_to')
         except json.JSONDecodeError:
-            return None, None, None
+            return None, None, None, None
 
     def _get_receiver_user(self, receiver_user_id: str):
         """Get receiver user info"""
@@ -80,10 +81,10 @@ class UserChatConsumer(WebsocketConsumer):
 
     def _generate_user_chat_name(self, receiver_user):
         """Generate chat channel name"""
-        if receiver_user.username > self.sender_user.username:
-            return f"chat_{self.sender_user}_{receiver_user.username}"
+        if receiver_user.id > self.sender_user.id:
+            return f"chat_{self.sender_user.id}_{receiver_user.id}"
         else:
-            return f"chat_{receiver_user.username}_{self.sender_user.username}"
+            return f"chat_{receiver_user.id}_{self.sender_user.id}"
 
     def _add_user_to_channel(self):
         """Add user to channel"""
@@ -92,23 +93,51 @@ class UserChatConsumer(WebsocketConsumer):
             self.channel_name
         )
 
-    def _send_message_to_channel(self, message_text, file_url, receiver_user):
+    def _send_message_to_channel(self, message_text, file_url, receiver_user, reply_to=None):
         """Send message to channel"""
+        msg = ChatMessage.objects.filter(id=reply_to).first()
         async_to_sync(self.channel_layer.group_send)(
             f"private_chat_{receiver_user.id}",
-            {"type": "chat.message", "message": message_text, "file_url": file_url, "sender": self.sender_user.username,
-             "receiver": receiver_user.username}
+            {
+                "type": "chat.message",
+                "message": message_text,
+                "file_url": file_url,
+                "sender": {
+                    "id": self.sender_user.id,
+                    "full_name": self.sender_user.get_full_name(),
+                    "username": self.sender_user.username,
+                 },
+                "receiver": {
+                    "id": receiver_user.id,
+                    "full_name": receiver_user.get_full_name(),
+                    "username": receiver_user.username,
+                 },
+                "reply_to": (
+                    {
+                        "id": msg.id,
+                        "message": decrypt_message_and_file(msg.message),
+                        "sender": {
+                            "id": msg.from_user.id,
+                            "full_name": msg.from_user.get_full_name(),
+                            "username": msg.from_user.username,
+                        },
+                    }
+                    if msg else None
+                )
+            }
         )
 
-    def _save_message(self, message_text, file_url, receiver_user):
+    def _save_message(self, message_text, file_url, receiver_user, reply_to=None):
         """Save message to database"""
         if self.sender_user.is_authenticated and receiver_user.is_authenticated:
             client_status = redis_client.sismember("online_users", receiver_user.id)
             encrypt_text = encrypt_message_and_file(message_text)
+            if reply_to:
+                reply_to = ChatMessage.objects.filter(id=reply_to).first()
             if client_status:
-                ChatMessage.objects.create(from_user=self.sender_user, to_user=receiver_user, message=encrypt_text, file=file_url, is_delivery=True)
+                ChatMessage.objects.create(from_user=self.sender_user, to_user=receiver_user, message=encrypt_text, file=file_url, reply_to=reply_to, is_delivery=True)
             else:
-                ChatMessage.objects.create(from_user=self.sender_user, to_user=receiver_user, message=encrypt_text, file=file_url)
+                ChatMessage.objects.create(from_user=self.sender_user, to_user=receiver_user, message=encrypt_text, file=file_url, reply_to=reply_to)
 
     def _delivery_user_messages(self):
         undelivery_messages = ChatMessage.objects.filter(to_user=self.sender_user, is_delivery=False)
@@ -116,11 +145,32 @@ class UserChatConsumer(WebsocketConsumer):
             sh_message_text = decrypt_message_and_file(msg.message)
             self.send(text_data=json.dumps(
                 {
-                    "receiver": self.sender_user.username,
-                    "sender": msg.from_user.username,
-                    "created_at": str(msg.created_at),
+                    "id": msg.id,
                     "message": sh_message_text,
-                    "file_url": msg.file.url if msg.file else ""
+                    "file_url": msg.file.url if msg.file else "",
+                    "sender": {
+                        "id": msg.from_user.id,
+                        "full_name": msg.from_user.get_full_name(),
+                        "username": msg.from_user.username,
+                    },
+                    "receiver": {
+                        "id": self.sender_user.id,
+                        "full_name": self.sender_user.get_full_name(),
+                        "username": self.sender_user.username,
+                    },
+                    "reply_to": (
+                        {
+                            "id": msg.reply_to.id,
+                            "message": decrypt_message_and_file(msg.reply_to.message),
+                            "sender": {
+                                "id": msg.reply_to.from_user.id,
+                                "full_name": msg.reply_to.from_user.get_full_name(),
+                                "username": msg.reply_to.from_user.username,
+                            },
+                        }
+                        if msg.reply_to else None
+                    ),
+                    "created_at": str(msg.created_at)
                 }
             ))
             msg.is_delivery = True

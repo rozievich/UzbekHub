@@ -2,7 +2,6 @@ from uuid import uuid4
 from drf_yasg import openapi
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -16,8 +15,8 @@ from .tokens import get_tokens_for_user
 from accounts.utils.get_location import get_my_location
 from .models import CustomUser, Location
 from .tasks import send_to_gmail, send_password_reset_email
-from .permissions import IsAdminPermission
 from stories.permissions import IsOwnerPermission
+from .permissions import IsAdminPermission
 from .serializers import (
     EmailVerificationSerializer,
     UserSignInSerializer,
@@ -229,7 +228,7 @@ class AcceptChangeEmailAPIView(APIView):
 class AdminUserModelViewSet(ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserMyProfileSerializer
-    permission_classes = (AllowAny, )
+    permission_classes = (IsAuthenticated, IsAdminPermission)
     http_method_names = ("get", "delete")
 
 
@@ -239,12 +238,7 @@ class ProfileSearchAPIView(APIView):
     permission_classes = (IsAuthenticated, )
 
     def get(self, request, key):
-        query_users = CustomUser.objects.filter(
-            Q(username__icontains=key) |
-            Q(first_name__icontains=key) |
-            Q(last_name__icontains=key) |
-            Q(email__icontains=key)
-        )
+        query_users = CustomUser.objects.filter(username__icontains=key)
         serializer = self.serializer_class(query_users, many=True)
         return Response(serializer.data, status=200)
 

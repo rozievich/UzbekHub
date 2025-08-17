@@ -47,6 +47,7 @@ class ChatGroupModelViewSet(ModelViewSet):
     serializer_class = ChatGroupModelSerializer
     queryset = ChatGroup.objects.all()
     permission_classes = (IsAuthenticated, GroupOwnerPermission)
+    parser_classes = (MultiPartParser, FormParser)
 
 
 class ChatGroupMessageListAPIView(ListAPIView):
