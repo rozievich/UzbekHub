@@ -1,3 +1,4 @@
+import hashlib
 from django.db import models
 from rest_framework.validators import ValidationError
 from accounts.models import CustomUser
@@ -25,6 +26,37 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return self.message[:30] if self.message else "No message"
+
+class File(models.Model):
+    FILE_TYPES = [
+        ("image", "Image"),
+        ("video", "Video"),
+        ("voice", "Voice"),
+        ("document", "Document"),
+        ("other", "Other"),
+    ]
+
+    unique_id = models.CharField(max_length=64, unique=True, editable=False)  # 🔑
+    file = models.FileField(upload_to="files/")
+    file_type = models.CharField(max_length=20, choices=FILE_TYPES, default="other")
+    size = models.PositiveIntegerField(null=True, blank=True)
+    duration = models.FloatField(null=True, blank=True)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.unique_id:
+            hasher = hashlib.sha256()
+            self.file.open("rb")
+            for chunk in self.file.chunks():
+                hasher.update(chunk)
+            self.unique_id = hasher.hexdigest()
+            self.file.close()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.file_type}: {self.unique_id}"
 
 
 class ChatGroup(models.Model):
