@@ -207,18 +207,31 @@ class ChatGroupConsumer(WebsocketConsumer):
 
     def receive(self, text_data=None, bytes_data=None):
         """Xabarlarni qabul qilish va yuborish"""
-        message_text, file_url = self._extract_message_data(text_data)
+        message_text, file_url, reply_to = self._extract_message_data(text_data)
         if not message_text and not file_url:
             return
 
-        self.message = self._save_message_database(message_text, file_url)
+        self.message = self._save_message_database(message_text, file_url, reply_to)
         async_to_sync(self.channel_layer.group_send)(
             self.group_channel_name,
             {
                 "type": "chat.message",
-                "message_id": self.message.id,
-                "sender": self.message.from_user.username,
+                "id": self.message.id,
+                "sender": {
+                    "id": self.sender_user.id,
+                    "full_name": self.sender_user.get_full_name(),
+                    "username": self.sender_user.username,
+                 },
                 "message": self.message.message,
+                "reply_to": {
+                    "id": self.message.reply_to.id,
+                    "message": decrypt_message_and_file(self.message.reply_to.message),
+                    "sender": {
+                        "id": self.message.reply_to.owner.id,
+                        "full_name": self.message.reply_to.owner.get_full_name(),
+                        "username": self.message.reply_to.owner.username,
+                    }
+                },
                 "created_at": str(self.message.created_at),
                 "update_at": str(self.message.update_at)
             }
@@ -227,19 +240,22 @@ class ChatGroupConsumer(WebsocketConsumer):
     def chat_message(self, event):
         self.send(text_data=json.dumps(
             {
-                "message_id": event['message_id'],
+                "id": event['id'],
                 "sender": event['sender'],
                 "message": event['message'],
+                "reply_to": event['reply_to'],
                 "created_at": event['created_at'],
                 "update_at": event['update_at']
             })
         )
         self._mark_message_delivered()
 
-    def _save_message_database(self, message: str, file_url: str):
+    def _save_message_database(self, message: str, file_url: str, reply_to=None):
         """Xabarni saqlash va unga yetkazilganini belgilash"""
         sh_message_text = encrypt_message_and_file(message)
-        group_message = GroupMessage.objects.create(group=self.group_info, from_user=self.user, message=sh_message_text, file=file_url)
+        if reply_to:
+            reply_to = GroupMessage.objects.filter(id=reply_to).first()
+        group_message = GroupMessage.objects.create(group=self.group_info, from_user=self.user, message=sh_message_text, file=file_url, reply_to=reply_to)
         return group_message
 
     def _mark_message_delivered(self):
@@ -266,9 +282,22 @@ class ChatGroupConsumer(WebsocketConsumer):
 
         message_data = [{
             "message_id": msg.id,
-            "sender": msg.from_user.username,
+            "sender": {
+                "id": msg.from_user.id,
+                "full_name": msg.from_user.get_full_name(),
+                "username": msg.from_user.username,
+            },
             "message": decrypt_message_and_file(msg.message),
             "file_url": msg.file.url,
+            "reply_to": {
+                "id": msg.reply_to.id,
+                "message": decrypt_message_and_file(msg.reply_to.message),
+                "sender": {
+                    "id": msg.reply_to.owner.id,
+                    "full_name": msg.reply_to.owner.get_full_name(),
+                    "username": msg.reply_to.owner.username,
+                }
+            },
             "created_at": str(msg.created_at),
             "update_at": str(msg.update_at)
         } for msg in undelivery_messages]
@@ -281,6 +310,6 @@ class ChatGroupConsumer(WebsocketConsumer):
         """Extract message data"""
         try:
             json_data = json.loads(text_data)
-            return json_data.get("message"), json_data.get("file_url")
+            return json_data.get("message"), json_data.get("file_url"), json_data.get('reply_to')
         except json.JSONDecodeError:
-            return None, None
+            return None, None, None

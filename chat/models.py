@@ -67,6 +67,7 @@ class ChatGroup(models.Model):
     description = models.CharField(max_length=200, blank=True, null=True)
     profile_pic = models.FileField(upload_to="group_picture/")
     members = models.ManyToManyField(CustomUser, related_name="chat_groups")
+    reply_to = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True, related_name="replies")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
