@@ -9,10 +9,7 @@ User = get_user_model()
 
 @database_sync_to_async
 def get_user(user_id):
-    try:
-        return User.objects.filter(id=user_id).first()
-    except User.DoesNotExist:
-        return AnonymousUser()
+    return User.objects.filter(id=user_id).first()
 
 
 class JwtAuthTokenMiddleware(BaseMiddleware):
@@ -23,12 +20,12 @@ class JwtAuthTokenMiddleware(BaseMiddleware):
             auth_header = headers[b'authorization'].decode()
             if auth_header.startswith("Bearer"):
                 token = auth_header.split(" ")[1]
-                try:
-                    access_token = AccessToken(token)
-                    user = await get_user(access_token['user_id'])
-                    scope['user'] = user
-                except Exception as e:
+                access_token = AccessToken(token)
+                user = await get_user(access_token['user_id'])
+                if user is None:
                     scope['user'] = AnonymousUser()
+                else:
+                    scope['user'] = user
         else:
             scope['user'] = AnonymousUser()
 
