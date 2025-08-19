@@ -55,8 +55,8 @@ class CustomUser(AbstractUser):
 
 class Location(models.Model):
     owner = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="location")
-    lat = models.DecimalField(max_digits=9, decimal_places=6)
-    long = models.DecimalField(max_digits=9, decimal_places=6)
+    lat = models.DecimalField(max_digits=11, decimal_places=30)
+    long = models.DecimalField(max_digits=11, decimal_places=30)
     country = models.CharField(max_length=128, blank=True, null=True)
     city = models.CharField(max_length=128, blank=True, null=True)
     county = models.CharField(max_length=128, blank=True, null=True)
