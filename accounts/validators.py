@@ -24,3 +24,19 @@ def validate_username(value):
         username_validator(value)
     except ValidationError as e:
         raise ValidationError(e.message)
+
+def validate_lat(value):
+    try:
+        val = float(value)
+    except ValueError:
+        raise ValidationError("Latitude son bo‘lishi kerak.")
+    if val < -90 or val > 90:
+        raise ValidationError("Latitude -90 va 90 oralig‘ida bo‘lishi kerak.")
+
+def validate_long(value):
+    try:
+        val = float(value)
+    except ValueError:
+        raise ValidationError("Longitude son bo‘lishi kerak.")
+    if val < -180 or val > 180:
+        raise ValidationError("Longitude -180 va 180 oralig‘ida bo‘lishi kerak.")

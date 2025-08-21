@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
 
-from .validators import validate_phone_number, validate_username
+from .validators import validate_lat, validate_long, validate_phone_number, validate_username
 
 
 # Custom User Manager
@@ -55,8 +55,8 @@ class CustomUser(AbstractUser):
 
 class Location(models.Model):
     owner = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="location")
-    lat = models.DecimalField(max_digits=11, decimal_places=30)
-    long = models.DecimalField(max_digits=11, decimal_places=30)
+    lat = models.CharField(max_length=50, validators=[validate_lat])
+    long = models.CharField(max_length=50, validators=[validate_long])
     country = models.CharField(max_length=128, blank=True, null=True)
     city = models.CharField(max_length=128, blank=True, null=True)
     county = models.CharField(max_length=128, blank=True, null=True)
