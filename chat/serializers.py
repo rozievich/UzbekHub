@@ -1,80 +1,52 @@
-import re
-from rest_framework.serializers import ModelSerializer, HiddenField, \
-    CurrentUserDefault, PrimaryKeyRelatedField, StringRelatedField
-from rest_framework.exceptions import ValidationError
-
-from .models import ChatMessage, ChatGroup, GroupMessage
-from .utils import decrypt_message_and_file
-from accounts.models import CustomUser
+from rest_framework import serializers
+from .models import ChatRoom, RoomMember, Message, File, MessageStatus
+from django.conf import settings
 
 
+class FileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = "__all__"
 
-class ChatMessageModelSerializer(ModelSerializer):
-    reply_to = PrimaryKeyRelatedField(queryset=ChatMessage.objects.all(), required=False, allow_null=True)
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = serializers.PrimaryKeyRelatedField(queryset=settings.AUTH_USER_MODEL.objects.all())
+    attachments = FileSerializer(many=True, read_only=True)
+    reply_to = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all(), required=False, allow_null=True)
 
     class Meta:
-        model = ChatMessage
+        model = Message
         fields = "__all__"
 
     def validate(self, attrs):
-        message = attrs.get('message')
-        file = attrs.get('file')
-
-        if not message and not file:
-            raise ValidationError("Sending a message or file is mandatory!")
+        text = attrs.get('text')
+        if not text and not self.instance:
+            raise serializers.ValidationError("Message must have either text or file!")
         return attrs
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['message'] = decrypt_message_and_file(representation['message'])
 
-        if instance.reply_to:
-            representation['reply_to'] = {
-                "id": instance.reply_to.id,
-                "message": instance.reply_to.message,
-                "file": instance.reply_to.file.url if instance.reply_to.file else None,
-                "owner": {
-                    "id": instance.reply_to.from_user.id,
-                    "username": instance.reply_to.from_user.username if instance.reply_to.from_user.username else None
-                }
-            }
-        return representation
-
-
-class ChatGroupModelSerializer(ModelSerializer):
-    owner = HiddenField(default=CurrentUserDefault())
-    members = PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True)
-    reply_to = PrimaryKeyRelatedField(queryset=GroupMessage.objects.all(), required=False, allow_null=True)
+class RoomMemberSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=settings.AUTH_USER_MODEL.objects.all())
+    room = serializers.PrimaryKeyRelatedField(queryset=ChatRoom.objects.all())
 
     class Meta:
-        model = ChatGroup
+        model = RoomMember
         fields = "__all__"
 
-    def validate_username(self, username):
-        if not re.match(r"^[a-z0-9_]+$", username) or not (5 <= len(username) <= 32):
-            raise ValidationError({"message": "The username must be at least 5 characters and at most 32 characters long and can contain letters, numbers, and _."})
-        return username
 
-
-class ChatGroupMessageModelSerializer(ModelSerializer):
-    is_delivery = StringRelatedField(many=True)
+class ChatRoomSerializer(serializers.ModelSerializer):
+    members = serializers.PrimaryKeyRelatedField(queryset=settings.AUTH_USER_MODEL.objects.all(), many=True)
+    room_members = RoomMemberSerializer(many=True, read_only=True)
 
     class Meta:
-        model = GroupMessage
+        model = ChatRoom
         fields = "__all__"
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['message'] = decrypt_message_and_file(representation['message'])
 
-        if instance.reply_to:
-            representation['reply_to'] = {
-                "id": instance.reply_to.id,
-                "message": instance.reply_to.message,
-                "file": instance.reply_to.file.url if instance.reply_to.file else None,
-                "owner": {
-                    "id": instance.reply_to.from_user.id,
-                    "username": instance.reply_to.from_user.username if instance.reply_to.from_user.username else None
-                }
-            }
-        return representation
+class MessageStatusSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=settings.AUTH_USER_MODEL.objects.all())
+    message = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all())
+
+    class Meta:
+        model = MessageStatus
+        fields = "__all__"
