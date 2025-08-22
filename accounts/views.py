@@ -243,6 +243,20 @@ class ProfileSearchAPIView(APIView):
         return Response(serializer.data, status=200)
 
 
+class ProfileDetailAPIView(APIView):
+    serializer_class = CustomUserMyProfileSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = self.serializer_class(user)
+        return Response(serializer.data, status=200)
+
+    def get_object(self):
+        return self.request.user
+
+
+
 # Locations Views
 class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
     serializer_class = LocationModelSerializer
