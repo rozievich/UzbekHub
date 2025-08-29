@@ -40,3 +40,18 @@ def send_password_reset_email(email, reset_link):
     email.content_subtype = 'html'
     result = email.send()
     return result
+
+@shared_task
+def delete_account_email(email):
+    otp_code = str(randint(10000, 99999))
+    cache.set(f'{settings.CACHE_KEY_PREFIX}:{otp_code}', email, timeout=settings.CACHE_TTL)
+    subject = 'Your UzbekHub profile deletion request'
+
+    message = render_to_string('email_template.html', {'code': otp_code})
+
+    recipient_list = [email]
+
+    email = EmailMessage(subject, message, EMAIL_HOST_USER, recipient_list)
+    email.content_subtype = 'html'
+    result = email.send()
+    return result

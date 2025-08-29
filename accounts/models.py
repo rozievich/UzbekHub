@@ -67,3 +67,15 @@ class Location(models.Model):
     def __str__(self):
         parts = [self.country, self.city, self.county, self.neighbourhood]
         return ", ".join(filter(None, parts))
+
+
+class UserBlock(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="blocked_users")
+    blocked_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="blocked_by_users")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'blocked_user')
+
+    def __str__(self):
+        return f"{self.user.email} blocked {self.blocked_user.email}"

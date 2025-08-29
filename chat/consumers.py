@@ -1,11 +1,12 @@
-
-# ...existing imports...
 import json
+import redis
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 from django.conf import settings
 from django.utils import timezone
 from .models import ChatRoom, RoomMember, Message, File, MessageStatus, MessageAction
+
+redis_client = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, decode_responses=True)
 
 class ChatConsumer(WebsocketConsumer):
     def connect(self):

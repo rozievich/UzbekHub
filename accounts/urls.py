@@ -15,7 +15,11 @@ from accounts.views import (
     AdminUserModelViewSet,
     ProfileSearchAPIView,
     LocationAPIView,
-    ProfileDetailAPIView
+    ProfileDetailAPIView,
+    BlockedUsersAPIView,
+    BlockedUserDetailAPIView,
+    UserDeleteRequestAPIView,
+    AcceptDeleteAccountAPIView
 )
 
 router = DefaultRouter()
@@ -34,8 +38,12 @@ urlpatterns = [
     path('account/check/username/', CheckUsernameAPIView.as_view(), name="check_username"),
     path('account/change-email/', ChangeEmailAPIView.as_view(), name="change_email"),
     path('account/change-email/confirm/', AcceptChangeEmailAPIView.as_view(), name="change_email_confirm"),
+    path('account/delete/', UserDeleteRequestAPIView.as_view(), name="delete_account"),
+    path('account/delete/confirm/', AcceptDeleteAccountAPIView.as_view(), name="delete_account_confirm"),
     path('account/search/<str:key>/', ProfileSearchAPIView.as_view(), name="profile_search"),
     path('account/profile/<int:pk>/', ProfileDetailAPIView.as_view(), name="profile_detail"),
     path('account/location/', LocationAPIView.as_view(), name="locations"),
+    path('account/block/', BlockedUsersAPIView.as_view(), name="blocked_users"),
+    path('account/block/<int:pk>/', BlockedUserDetailAPIView.as_view(), name="blocked_user_detail"),
     path('', include(router.urls))
 ]

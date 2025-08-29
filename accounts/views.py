@@ -1,4 +1,5 @@
 from uuid import uuid4
+from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from django.conf import settings
 from django.core.cache import cache
@@ -13,8 +14,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
 from accounts.utils.get_location import get_my_location
-from .models import CustomUser, Location
-from .tasks import send_to_gmail, send_password_reset_email
+from .models import CustomUser, Location, UserBlock
+from .tasks import delete_account_email, send_to_gmail, send_password_reset_email
 from stories.permissions import IsOwnerPermission
 from .permissions import IsAdminPermission
 from .serializers import (
@@ -26,7 +27,8 @@ from .serializers import (
     ResetPasswordSerializer,
     CheckUsernameSerializer,
     ChangeEmailSerializer,
-    LocationModelSerializer
+    LocationModelSerializer,
+    UserBlockSerializer
 )
 
 
@@ -80,6 +82,24 @@ class CustomUserSignInAPIView(APIView):
         return Response({'status': True, 'email': serializer.data['email'], 'token': get_tokens_for_user(user)})
 
 
+# GoogleLoginAPIView view
+class GoogleLoginAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google OAuth token')
+        }
+    ), tags=["auth"])
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'error': 'Token required'}, status=400)
+        tokens = oauth2_sign_in(token)
+        return Response(tokens)
+
+
 # ForgotPassword view
 class ForgotPasswordAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -126,6 +146,42 @@ class NewPasswordAPIView(APIView):
         return Response({"message": "Your password has been successfully updated"})
 
 
+# Delete account
+class UserDeleteRequestAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @swagger_auto_schema(
+        tags=["auth"],
+        operation_description="A confirmation code will be sent to your email to delete your account."
+    )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        delete_account_email.apply_async(args=[user.email], countdown=5)
+        cache.set(f'delete_user:{user.email}', user, timeout=settings.CACHE_TTL)
+        return Response({"message": "Verification code sent to email"}, status=200)
+
+
+class AcceptDeleteAccountAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @swagger_auto_schema(
+        request_body=EmailVerificationSerializer,
+        tags=["auth"]
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = EmailVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.data.get("code")
+
+        if code and (email := cache.get(f'delete_user:{code}')):
+            if user := cache.get(f'delete_user:{email}'):
+                user.delete()
+                cache.delete(f'delete_user:{email}')
+                return Response({"message": "Account successfully deleted"}, status=204)
+
+        return Response({"error": "Invalid or expired code"}, status=400)
+
+
 # CustomUserMyProfileAPIView view
 class CustomUserMyProfileAPIView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -143,24 +199,6 @@ class CustomUserMyProfileAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(self.serializer_class(user).data)
-
-
-# GoogleLoginAPIView view
-class GoogleLoginAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    @swagger_auto_schema(request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google OAuth token')
-        }
-    ), tags=["auth"])
-    def post(self, request):
-        token = request.data.get('token')
-        if not token:
-            return Response({'error': 'Token required'}, status=400)
-        tokens = oauth2_sign_in(token)
-        return Response(tokens)
 
 
 # Checkusername view
@@ -224,39 +262,6 @@ class AcceptChangeEmailAPIView(APIView):
         return Response({"message": 'Code is expired or invalid'})
 
 
-# Adminstrators APIs
-class AdminUserModelViewSet(ModelViewSet):
-    queryset = CustomUser.objects.all()
-    serializer_class = CustomUserMyProfileSerializer
-    permission_classes = (IsAuthenticated, IsAdminPermission)
-    http_method_names = ("get", "delete")
-
-
-# Username and FistName LastName and email search
-class ProfileSearchAPIView(APIView):
-    serializer_class = CustomUserMyProfileSerializer
-    permission_classes = (IsAuthenticated, )
-
-    def get(self, request, key):
-        query_users = CustomUser.objects.filter(username__icontains=key)
-        serializer = self.serializer_class(query_users, many=True)
-        return Response(serializer.data, status=200)
-
-
-class ProfileDetailAPIView(APIView):
-    serializer_class = CustomUserMyProfileSerializer
-    permission_classes = (IsAuthenticated, )
-
-    def get(self, request, *args, **kwargs):
-        user = self.get_object()
-        serializer = self.serializer_class(user)
-        return Response(serializer.data, status=200)
-
-    def get_object(self):
-        return self.request.user
-
-
-
 # Locations Views
 class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
     serializer_class = LocationModelSerializer
@@ -305,3 +310,105 @@ class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         Location.objects.filter(owner=request.user).delete()
         return Response(status=204)
+
+
+# Username and FistName LastName and email search
+class ProfileSearchAPIView(APIView):
+    serializer_class = CustomUserMyProfileSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, key):
+        blocked_me = UserBlock.objects.filter(blocked_user=request.user).values_list('user_id', flat=True)
+        query_users = CustomUser.objects.filter(username__icontains=key).exclude(id__in=blocked_me)
+        serializer = self.serializer_class(query_users, many=True)
+        return Response(serializer.data, status=200)
+
+
+class ProfileDetailAPIView(APIView):
+    serializer_class = CustomUserMyProfileSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, pk):
+        blocked_me = UserBlock.objects.filter(blocked_user=request.user).values_list('user_id', flat=True)
+        user = CustomUser.objects.filter(id=pk).exclude(id__in=blocked_me).first()
+        serializer = self.serializer_class(user)
+        return Response(serializer.data, status=200)
+
+
+# Blocked Users APIView
+class BlockedUsersAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserBlockSerializer
+
+    def get(self, request, *args, **kwargs):
+        blocked_users = UserBlock.objects.filter(user=request.user).values_list('blocked_user', flat=True)
+        serializer = self.serializer_class(blocked_users, many=True)
+        return Response(serializer.data, status=200)
+
+    @swagger_auto_schema(
+        operation_description="Block user",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                in_=openapi.IN_QUERY,
+                description="ID of the user to be blocked",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            )
+        ],
+        responses={201: UserBlockSerializer},
+        tags=["accounts"]
+    )
+    def post(self, request, *args, **kwargs):
+        blocked_user_id = request.query_params.get('id')
+        if not blocked_user_id:
+            return Response({"error": "User ID is required"}, status=400)
+
+        blocked_user = get_object_or_404(CustomUser, id=blocked_user_id)
+
+        if UserBlock.objects.filter(user=request.user, blocked_user=blocked_user).exists():
+            return Response({"detail": "User already blocked"}, status=400)
+
+        block = UserBlock.objects.create(user=request.user, blocked_user=blocked_user)
+        serializer = self.serializer_class(block)
+        return Response(serializer.data, status=201)
+
+    @swagger_auto_schema(
+        operation_description="Unblock user",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                in_=openapi.IN_QUERY,
+                description="ID of the user to be unblocked",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            )
+        ],
+        responses={204: "No Content"},
+        tags=["accounts"]
+    )
+    def delete(self, request, *args, **kwargs):
+        blocked_user_id = request.query_params.get('id')
+        if not blocked_user_id:
+            return Response({"error": "User ID is required"}, status=400)
+
+        UserBlock.objects.filter(user=request.user, blocked_user_id=blocked_user_id).delete()
+        return Response(status=204)
+
+
+class BlockedUserDetailAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserBlockSerializer
+
+    def get(self, request, pk):
+        blocked_user = UserBlock.objects.filter(user=request.user, blocked_user=pk).first()
+        serializer = self.serializer_class(blocked_user)
+        return Response(serializer.data, status=200)
+
+
+# Adminstrators APIs
+class AdminUserModelViewSet(ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserMyProfileSerializer
+    permission_classes = (IsAuthenticated, IsAdminPermission)
+    http_method_names = ("get", "delete")

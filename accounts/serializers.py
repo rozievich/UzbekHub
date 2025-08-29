@@ -2,7 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 
-from .models import CustomUser, Location
+from .models import CustomUser, Location, UserBlock
 from chat.consumers import redis_client
 
 
@@ -182,3 +182,14 @@ class ChangeEmailSerializer(serializers.Serializer):
         if not user.check_password(password):
             raise serializers.ValidationError({"current_password": "The password is incorrect."})
         return attrs
+
+
+# UserBlockSerializer
+class UserBlockSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    blocked_user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
+
+    class Meta:
+        model = UserBlock
+        fields = ['id', 'user', 'blocked_user', 'created_at']
+        read_only_fields = ['id', 'created_at']
