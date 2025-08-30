@@ -2,7 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 
-from .models import CustomUser, Location, UserBlock
+from .models import CustomUser, Location, UserBlock, Status
 from chat.consumers import redis_client
 
 
@@ -65,6 +65,22 @@ class LocationModelSerializer(serializers.ModelSerializer):
         }
 
 
+# UserStatus Model Serializer
+class UserStatusModelSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Status
+        fields = ['id', 'user', 'content', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_content(self, value):
+        if len(value) > 55:
+            raise serializers.ValidationError("Status content must not exceed 55 characters.")
+        return value
+    
+
+
 # CustomUserMyProfileSerializer
 class CustomUserMyProfileSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
@@ -72,6 +88,7 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
     is_staff = serializers.BooleanField(read_only=True)
     is_active = serializers.BooleanField(read_only=True)
     location = LocationModelSerializer(read_only=True)
+    user_status = UserStatusModelSerializer(read_only=True)
 
     class Meta:
         model = CustomUser

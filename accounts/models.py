@@ -79,3 +79,13 @@ class UserBlock(models.Model):
 
     def __str__(self):
         return f"{self.user.email} blocked {self.blocked_user.email}"
+
+
+class Status(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="status")
+    content = models.CharField(max_length=55)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Status by {self.user.email} at {self.created_at}"

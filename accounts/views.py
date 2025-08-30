@@ -14,7 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
 from accounts.utils.get_location import get_my_location
-from .models import CustomUser, Location, UserBlock
+from .models import CustomUser, Location, UserBlock, Status
 from .tasks import delete_account_email, send_to_gmail, send_password_reset_email
 from stories.permissions import IsOwnerPermission
 from .permissions import IsAdminPermission
@@ -28,7 +28,8 @@ from .serializers import (
     CheckUsernameSerializer,
     ChangeEmailSerializer,
     LocationModelSerializer,
-    UserBlockSerializer
+    UserBlockSerializer,
+    UserStatusModelSerializer
 )
 
 
@@ -450,9 +451,54 @@ class BlockedUserDetailAPIView(APIView):
         return Response(serializer.data, status=200)
 
 
+# User Status APIView
+class UserStatusAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserStatusModelSerializer
+
+    def get(self, request, *args, **kwargs):
+        try:
+            status = request.user.status
+            serializer = self.serializer_class(status)
+            return Response(serializer.data, status=200)
+        except Status.DoesNotExist:
+            return Response({"detail": "No status found"}, status=404)
+
+    @swagger_auto_schema(request_body=UserStatusModelSerializer, tags=["accounts"])
+    def post(self, request, *args, **kwargs):
+        if hasattr(request.user, 'status'):
+            return Response({"error": "Status already exists. You can update it instead."}, status=400)
+        
+        serializer = self.serializer_class(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=201)
+
+    @swagger_auto_schema(request_body=UserStatusModelSerializer, tags=["accounts"])
+    def put(self, request, *args, **kwargs):
+        try:
+            status = request.user.status
+            serializer = self.serializer_class(status, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=200)
+        except Status.DoesNotExist:
+            return Response({"error": "No status found to update"}, status=404)
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            status = request.user.status
+            status.delete()
+            return Response(status=204)
+        except Status.DoesNotExist:
+            return Response({"error": "No status found to delete"}, status=404)
+
+
 # Adminstrators APIs
 class AdminUserModelViewSet(ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserMyProfileSerializer
     permission_classes = (IsAuthenticated, IsAdminPermission)
     http_method_names = ("get", "delete")
+
+
