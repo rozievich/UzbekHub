@@ -45,6 +45,15 @@ class CustomUserRegisterAPIView(CreateAPIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.data
         user = CustomUser(**data)
+        cache_key = f'user:{user.email}'
+        if cache.get(cache_key):
+            ttl = cache.ttl(cache_key)
+            if ttl is None:
+                ttl = 0
+            return Response({
+                "message": "Sign up process already started",
+                "wait_seconds": ttl
+            }, status=429)
         send_to_gmail.apply_async(args=[user.email], countdown=5)
         cache.set(f'user:{user.email}', user, timeout=settings.CACHE_TTL)
         return Response({"status": True, 'user': user.email}, status=201)
@@ -113,8 +122,17 @@ class ForgotPasswordAPIView(APIView):
         user = CustomUser.objects.filter(email=email).first()
         if not user:
             return Response({"error": "User with this email does not exist"}, status=404)
-
+        
         reset_link = uuid4().hex
+        cache_key = f'password_reset:{reset_link}'
+        if cache.get(cache_key):
+            ttl = cache.ttl(cache_key)
+            if ttl is None:
+                ttl = 0
+            return Response({
+                "message": "Reset password process already started",
+                "wait_seconds": ttl
+            }, status=429)
         send_password_reset_email.apply_async(args=[email, reset_link], countdown=5)
 
         cache.set(f'password_reset:{reset_link}', user.email, timeout=settings.CACHE_TTL)
@@ -151,11 +169,30 @@ class UserDeleteRequestAPIView(APIView):
     permission_classes = (IsAuthenticated,)
 
     @swagger_auto_schema(
-        tags=["auth"],
-        operation_description="A confirmation code will be sent to your email to delete your account."
+        manual_parameters=[
+            openapi.Parameter(
+                'password', openapi.IN_QUERY,
+                description="Password to be verified",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        tags=["accounts"]
     )
     def post(self, request, *args, **kwargs):
         user = request.user
+        password = request.query_params.get('password')
+        if not user.check_password(password):
+            return Response({"error": "Invalid password"}, status=400)
+        cache_key = f'delete_user:{user.email}'
+        if cache.get(cache_key):
+            ttl = cache.ttl(cache_key)
+            if ttl is None:
+                ttl = 0
+            return Response({
+                "message": "Delete process already started",
+                "wait_seconds": ttl
+            }, status=429)
         delete_account_email.apply_async(args=[user.email], countdown=5)
         cache.set(f'delete_user:{user.email}', user, timeout=settings.CACHE_TTL)
         return Response({"message": "Verification code sent to email"}, status=200)
@@ -166,17 +203,19 @@ class AcceptDeleteAccountAPIView(APIView):
 
     @swagger_auto_schema(
         request_body=EmailVerificationSerializer,
-        tags=["auth"]
+        tags=["accounts"]
     )
     def post(self, request, *args, **kwargs):
         serializer = EmailVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         code = serializer.data.get("code")
+        user = request.user
 
-        if code and (email := cache.get(f'delete_user:{code}')):
+        if code and (email := cache.get(f'delete_user_cache:{code}')):
             if user := cache.get(f'delete_user:{email}'):
+                cache.delete(f'delete_user_cache:{code}')
+                cache.delete(f'user:{email}')
                 user.delete()
-                cache.delete(f'delete_user:{email}')
                 return Response({"message": "Account successfully deleted"}, status=204)
 
         return Response({"error": "Invalid or expired code"}, status=400)
