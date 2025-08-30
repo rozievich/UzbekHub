@@ -303,10 +303,16 @@ class AcceptChangeEmailAPIView(APIView):
 
 # Locations Views
 class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
+    queryset = Location.objects.all()
     serializer_class = LocationModelSerializer
     permission_classes = (IsAuthenticated, IsOwnerPermission)
+    http_method_names = ("post", "delete", "put")
 
     def create(self, request, *args, **kwargs):
+        user_location = self.queryset.filter(owner=request.user).first()
+        if user_location:
+            return Response({"error": "Location already exists. You can update it instead."}, status=400)
+        
         serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
@@ -326,26 +332,25 @@ class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
         return Response(serializer.data, status=201)
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.serializer_class(instance, request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+        user_location = self.queryset.filter(owner=request.user).first()
+        if user_location:
+            serializer = self.serializer_class(user_location, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            lat = serializer.validated_data.get('lat')
+            long = serializer.validated_data.get('long')
+            full_address = get_my_location(lat=str(lat), long=str(long))
+            if full_address:
+                serializer.save(
+                    country=full_address.get('country'),
+                    city=full_address.get('city'),
+                    county=full_address.get('county'),
+                    neighbourhood=full_address.get('neighbourhood')
+                )
+            else:
+                serializer.save()
+            return Response(serializer.data, status=200)
+        return Response({"error": "Location not found"}, status=404)
 
-        lat = serializer.validated_data.get('lat')
-        long = serializer.validated_data.get('long')
-        full_address = get_my_location(lat=str(lat), long=str(long))
-        
-        if full_address:
-            serializer.save(
-                country=full_address.get('country'),
-                city=full_address.get('city'),
-                county=full_address.get('county'),
-                neighbourhood=full_address.get('neighbourhood')
-            )
-        else:
-            serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
     def destroy(self, request, *args, **kwargs):
         Location.objects.filter(owner=request.user).delete()
         return Response(status=204)
