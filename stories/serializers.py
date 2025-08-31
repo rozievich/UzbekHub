@@ -6,7 +6,7 @@ from .models import Story, StoryViewed, StoryReaction
 
 class StoryViewedModelSerializer(serializers.ModelSerializer):
     viewer = CustomUserMyProfileSerializer(read_only=True)
-    viewer_id = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    viewer = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = StoryViewed
@@ -16,7 +16,7 @@ class StoryViewedModelSerializer(serializers.ModelSerializer):
 
 class StoryReactionModelSerializer(serializers.ModelSerializer):
     user = CustomUserMyProfileSerializer(read_only=True)
-    user_id = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = StoryReaction
