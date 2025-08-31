@@ -16,9 +16,9 @@ class ChatRoom(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room_type = models.CharField(max_length=10, choices=ROOM_TYPES, default=PRIVATE)
-    name = models.CharField(max_length=128, blank=True, null=True)   # Group nomi
-    username = models.CharField(max_length=32, unique=True, null=True, blank=True)  # Public username
-    description = models.TextField(blank=True, null=True)  # Guruh description
+    name = models.CharField(max_length=128, blank=True, null=True)
+    username = models.CharField(max_length=32, unique=True, null=True, blank=True)
+    description = models.TextField(blank=True, null=True)
     profile_pic = models.FileField(upload_to="room_pictures/", blank=True, null=True)
 
     members = models.ManyToManyField(

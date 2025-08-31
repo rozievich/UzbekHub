@@ -376,6 +376,8 @@ class ProfileDetailAPIView(APIView):
     def get(self, request, pk):
         blocked_me = UserBlock.objects.filter(blocked_user=request.user).values_list('user_id', flat=True)
         user = CustomUser.objects.filter(id=pk).exclude(id__in=blocked_me).first()
+        if not user:
+            return Response({"error": "User not found"}, status=404)
         serializer = self.serializer_class(user)
         return Response(serializer.data, status=200)
 
@@ -408,7 +410,10 @@ class BlockedUsersAPIView(APIView):
         blocked_user_id = request.query_params.get('id')
         if not blocked_user_id:
             return Response({"error": "User ID is required"}, status=400)
-
+        
+        if blocked_user_id == str(request.user.id):
+            return Response({"error": "You cannot block yourself"}, status=400)
+        
         blocked_user = get_object_or_404(CustomUser, id=blocked_user_id)
 
         if UserBlock.objects.filter(user=request.user, blocked_user=blocked_user).exists():
@@ -437,7 +442,10 @@ class BlockedUsersAPIView(APIView):
         if not blocked_user_id:
             return Response({"error": "User ID is required"}, status=400)
 
-        UserBlock.objects.filter(user=request.user, blocked_user_id=blocked_user_id).delete()
+        user = UserBlock.objects.filter(user=request.user, blocked_user_id=blocked_user_id).first()
+        if not user:
+            return Response({"error": "User not found"}, status=404)
+        user.delete()
         return Response(status=204)
 
 

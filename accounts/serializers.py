@@ -88,11 +88,11 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
     is_staff = serializers.BooleanField(read_only=True)
     is_active = serializers.BooleanField(read_only=True)
     location = LocationModelSerializer(read_only=True)
-    user_status = UserStatusModelSerializer(read_only=True)
+    status = UserStatusModelSerializer(read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ("id", "first_name", "last_name", "email", "username", "bio", "location", "profile_picture", "phone", "is_active", "is_staff", "date_joined", "last_login", "last_online", "password")
+        fields = ("id", "first_name", "last_name", "email", "username", "bio", "status", "location", "profile_picture", "phone", "is_active", "is_staff", "date_joined", "last_login", "last_online", "password")
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
@@ -137,7 +137,6 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
         user_status = redis_client.sismember("online_users", represantation['id'])
         if user_status:
             represantation['last_online'] = "online"
-        represantation['groups'] = [{"id": group.id, "name": group.name, "username": group.username} for group in instance.chat_groups.all()]
         return represantation
     
 
