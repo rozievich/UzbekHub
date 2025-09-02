@@ -29,6 +29,15 @@ class ChatRoom(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+    def clean(self):
+        if self.room_type == self.PRIVATE:
+            if self.name or self.username or self.description or self.profile_pic:
+                raise ValidationError("Private chat uchun name, username, description, profile_pic bo'sh bo'lishi kerak.")
+        if self.room_type == self.GROUP:
+            if not self.name:
+                raise ValidationError("Group chat uchun name majburiy.")
+
     def __str__(self):
         return f"{self.room_type}: {self.name or self.id}"
 
@@ -88,8 +97,8 @@ class File(models.Model):
     file = models.FileField(upload_to="chat_files/")
     file_type = models.CharField(max_length=20, choices=FILE_TYPES, default="other")
     size = models.PositiveIntegerField(null=True, blank=True)
-    duration = models.FloatField(null=True, blank=True)  # audio/video uchun
-    width = models.PositiveIntegerField(null=True, blank=True)  # rasm uchun
+    duration = models.FloatField(null=True, blank=True)
+    width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
@@ -108,22 +117,16 @@ class File(models.Model):
 
 
 class MessageAction(models.Model):
-    ACTION_TYPES = [
-        ("like", "Like"),
-        ("dislike", "Dislike"),
-        ("emoji", "Emoji"),
-    ]
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="actions")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    action_type = models.CharField(max_length=32, choices=ACTION_TYPES)
-    value = models.CharField(max_length=32, blank=True, null=True)  # emoji uchun
+    value = models.CharField(max_length=32, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("message", "user", "action_type", "value")
+        unique_together = ("message", "user", "value")
 
     def __str__(self):
-        return f"{self.user} {self.action_type} {self.value} on {self.message.id}"
+        return f"{self.user} {self.value} on {self.message.id}"
 
 
 class MessageStatus(models.Model):

@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from accounts.models import CustomUser
 from .models import ChatRoom, RoomMember, Message, File, MessageStatus
-from django.conf import settings
 
 
 class FileSerializer(serializers.ModelSerializer):
