@@ -387,7 +387,7 @@ class BlockedUsersAPIView(APIView):
         serializer = self.serializer_class(blocked_users, many=True, context={"request": request})
         return Response(serializer.data, status=200)
 
-    @swagger_auto_schema(tags=["accounts"])
+    @swagger_auto_schema(request_body=UserBlockSerializer, tags=["accounts"])
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
