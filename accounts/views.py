@@ -29,7 +29,8 @@ from .serializers import (
     ChangeEmailSerializer,
     LocationModelSerializer,
     UserBlockSerializer,
-    UserStatusModelSerializer
+    UserStatusModelSerializer,
+    DeleteAccountSerializer
 )
 
 
@@ -168,23 +169,17 @@ class NewPasswordAPIView(APIView):
 # Delete account
 class UserDeleteRequestAPIView(APIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = DeleteAccountSerializer
 
     @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                'password', openapi.IN_QUERY,
-                description="Password to be verified",
-                type=openapi.TYPE_STRING,
-                required=True
-            )
-        ],
+        request_body=DeleteAccountSerializer,
         tags=["accounts"]
     )
     def post(self, request, *args, **kwargs):
+        serializer_class = self.serializer_class(data=request.data, context={"request": request})
+        serializer_class.is_valid(raise_exception=True)
+
         user = request.user
-        password = request.query_params.get('password')
-        if not user.check_password(password):
-            return Response({"error": "Invalid password"}, status=400)
         cache_key = f'delete_user:{user.email}'
         if cache.get(cache_key):
             ttl = cache.ttl(cache_key)
@@ -382,81 +377,44 @@ class ProfileDetailAPIView(APIView):
         return Response(serializer.data, status=200)
 
 
-# Blocked Users APIView
+# Block and Unblock Users
 class BlockedUsersAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = UserBlockSerializer
 
     def get(self, request, *args, **kwargs):
-        blocked_users = UserBlock.objects.filter(user=request.user).values_list('blocked_user', flat=True)
-        serializer = self.serializer_class(blocked_users, many=True)
+        blocked_users = UserBlock.objects.filter(user=request.user)
+        serializer = self.serializer_class(blocked_users, many=True, context={"request": request})
         return Response(serializer.data, status=200)
 
-    @swagger_auto_schema(
-        operation_description="Block user",
-        manual_parameters=[
-            openapi.Parameter(
-                name="id",
-                in_=openapi.IN_QUERY,
-                description="ID of the user to be blocked",
-                type=openapi.TYPE_INTEGER,
-                required=True
-            )
-        ],
-        responses={201: UserBlockSerializer},
-        tags=["accounts"]
-    )
+    @swagger_auto_schema(tags=["accounts"])
     def post(self, request, *args, **kwargs):
-        blocked_user_id = request.query_params.get('id')
-        if not blocked_user_id:
-            return Response({"error": "User ID is required"}, status=400)
-        
-        if blocked_user_id == str(request.user.id):
-            return Response({"error": "You cannot block yourself"}, status=400)
-        
-        blocked_user = get_object_or_404(CustomUser, id=blocked_user_id)
-
-        if UserBlock.objects.filter(user=request.user, blocked_user=blocked_user).exists():
-            return Response({"detail": "User already blocked"}, status=400)
-
-        block = UserBlock.objects.create(user=request.user, blocked_user=blocked_user)
-        serializer = self.serializer_class(block)
+        serializer = self.serializer_class(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
         return Response(serializer.data, status=201)
 
-    @swagger_auto_schema(
-        operation_description="Unblock user",
-        manual_parameters=[
-            openapi.Parameter(
-                name="id",
-                in_=openapi.IN_QUERY,
-                description="ID of the user to be unblocked",
-                type=openapi.TYPE_INTEGER,
-                required=True
-            )
-        ],
-        responses={204: "No Content"},
-        tags=["accounts"]
-    )
-    def delete(self, request, *args, **kwargs):
-        blocked_user_id = request.query_params.get('id')
-        if not blocked_user_id:
-            return Response({"error": "User ID is required"}, status=400)
 
-        user = UserBlock.objects.filter(user=request.user, blocked_user_id=blocked_user_id).first()
-        if not user:
-            return Response({"error": "User not found"}, status=404)
-        user.delete()
-        return Response(status=204)
-
-
+# Retrieve + Delete
 class BlockedUserDetailAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = UserBlockSerializer
 
+    @swagger_auto_schema(tags=["accounts"])
     def get(self, request, pk):
         blocked_user = UserBlock.objects.filter(user=request.user, blocked_user=pk).first()
-        serializer = self.serializer_class(blocked_user)
+        if not blocked_user:
+            return Response({"error": "Not found"}, status=404)
+        serializer = self.serializer_class(blocked_user, context={"request": request})
         return Response(serializer.data, status=200)
+
+    @swagger_auto_schema(tags=["accounts"])
+    def delete(self, request, pk):
+        blocked_user = UserBlock.objects.filter(user=request.user, blocked_user=pk).first()
+        if not blocked_user:
+            return Response({"error": "Not found"}, status=404)
+        blocked_user.delete()
+        return Response(status=204)
 
 
 # User Status APIView
@@ -508,5 +466,3 @@ class AdminUserModelViewSet(ModelViewSet):
     serializer_class = CustomUserMyProfileSerializer
     permission_classes = (IsAuthenticated, IsAdminPermission)
     http_method_names = ("get", "delete")
-
-

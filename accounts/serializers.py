@@ -209,3 +209,24 @@ class UserBlockSerializer(serializers.ModelSerializer):
         model = UserBlock
         fields = ['id', 'user', 'blocked_user', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def validate(self, attrs):
+        user = attrs.get('user')
+        blocked_user = attrs.get('blocked_user')
+        if user == blocked_user:
+            raise serializers.ValidationError("You cannot block yourself.")
+        if UserBlock.objects.filter(user=user, blocked_user=blocked_user).exists():
+            raise serializers.ValidationError("You have already blocked this user.")
+        
+        return super().validate(attrs)
+
+
+# delete account serializer
+class DeleteAccountSerializer(serializers.Serializer):
+    password = serializers.CharField(required=True)
+
+    def validate_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("The password is incorrect.")
+        return value
