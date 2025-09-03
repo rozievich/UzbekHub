@@ -33,6 +33,9 @@ class RoomMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoomMember
         fields = "__all__"
+    
+    def validate(self, attrs):
+        return super().validate(attrs)
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
@@ -42,6 +45,28 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
         fields = "__all__"
+
+    def validate(self, attrs):
+        members = attrs.get('members', [])
+        room_type = attrs.get('room_type')
+
+        if not members:
+            raise serializers.ValidationError("At least one member must be added to the room.")
+
+        if len(members) != len(set(members)):
+            raise serializers.ValidationError("Members must be unique.")
+
+        if room_type == ChatRoom.PRIVATE and len(members) != 2:
+            raise serializers.ValidationError("Private rooms must have exactly 2 members.")
+
+        if room_type == ChatRoom.PRIVATE:
+            qs = ChatRoom.objects.filter(room_type=ChatRoom.PRIVATE)
+            for member in members:
+                qs = qs.filter(members=member)
+            if qs.exists():
+                raise serializers.ValidationError("A private room with these members already exists.")
+
+        return attrs
 
 
 class MessageStatusSerializer(serializers.ModelSerializer):

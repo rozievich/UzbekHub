@@ -14,10 +14,14 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     serializer_class = ChatRoomSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
 class RoomMemberViewSet(viewsets.ModelViewSet):
     queryset = RoomMember.objects.all()
     serializer_class = RoomMemberSerializer
     permission_classes = [permissions.IsAuthenticated]
+
 
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
@@ -25,11 +29,13 @@ class MessageViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+
 class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.all()
     serializer_class = FileSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+
 
 class MessageStatusViewSet(viewsets.ModelViewSet):
     queryset = MessageStatus.objects.all()
