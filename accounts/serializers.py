@@ -138,7 +138,15 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
         if user_status:
             represantation['last_online'] = "online"
         return represantation
-    
+
+
+# UserProfileSerializer with distance    
+class UserProfileWithDistanceSerializer(CustomUserMyProfileSerializer):
+    distance = serializers.FloatField()
+
+    class Meta(CustomUserMyProfileSerializer.Meta):
+        fields = CustomUserMyProfileSerializer.Meta.fields + ("distance",)
+
 
 # Forget password serializer
 class ForgetPasswordSerializer(serializers.Serializer):

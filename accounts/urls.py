@@ -20,7 +20,8 @@ from accounts.views import (
     BlockedUserDetailAPIView,
     UserDeleteRequestAPIView,
     AcceptDeleteAccountAPIView,
-    UserStatusAPIView
+    UserStatusAPIView,
+    UserLocationSearchAPIView
 )
 
 router = DefaultRouter()
@@ -47,5 +48,6 @@ urlpatterns = [
     path('account/block/', BlockedUsersAPIView.as_view(), name="blocked_users"),
     path('account/block/<int:pk>/', BlockedUserDetailAPIView.as_view(), name="blocked_user_detail"),
     path('account/status/', UserStatusAPIView.as_view(), name="user_status"),
+    path('account/location/<str:distance>/', UserLocationSearchAPIView.as_view(), name="user_location_search"),
     path('', include(router.urls))
 ]

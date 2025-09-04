@@ -13,7 +13,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
-from accounts.utils.get_location import get_my_location
+from accounts.utils.get_location import get_my_location, get_nearby_users
 from .models import CustomUser, Location, UserBlock, Status
 from .tasks import delete_account_email, send_to_gmail, send_password_reset_email
 from stories.permissions import IsOwnerPermission
@@ -30,7 +30,8 @@ from .serializers import (
     LocationModelSerializer,
     UserBlockSerializer,
     UserStatusModelSerializer,
-    DeleteAccountSerializer
+    DeleteAccountSerializer,
+    UserProfileWithDistanceSerializer
 )
 
 
@@ -458,6 +459,25 @@ class UserStatusAPIView(APIView):
             return Response(status=204)
         except Status.DoesNotExist:
             return Response({"error": "No status found to delete"}, status=404)
+
+
+
+class UserLocationSearchAPIView(APIView):
+    serializer_class = UserProfileWithDistanceSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, distance):
+        try:
+            distance = float(distance)
+        except ValueError:
+            return Response({"error": "Distance must be a number"}, status=400)
+
+        user_location = Location.objects.filter(owner=request.user).first()
+        if not user_location:
+            return Response({"error": "Your location is not set"}, status=400)
+        nearby_locations = get_nearby_users(request.user, distance)
+        serializer = self.serializer_class(nearby_locations, many=True, context={"request": request})
+        return Response(serializer.data, status=200)
 
 
 # Adminstrators APIs
