@@ -5,44 +5,45 @@ from django.conf import settings
 from rest_framework.validators import ValidationError
 
 
-class ChatRoom(models.Model):
-    PRIVATE = "private"
-    GROUP = "group"
-
-    ROOM_TYPES = [
-        (PRIVATE, "Private"),
-        (GROUP, "Group"),
-    ]
-
+class PrivateRoom(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    room_type = models.CharField(max_length=10, choices=ROOM_TYPES, default=PRIVATE)
-    name = models.CharField(max_length=128, blank=True, null=True)
+    user1 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="private_rooms_as_user1")
+    user2 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="private_rooms_as_user2")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user1", "user2")
+    
+    def save(self, *args, **kwargs):
+        if self.user1 == self.user2:
+            raise ValidationError("user1 va user2 bir xil bo'lishi mumkin emas.")
+        if self.user1.id > self.user2.id:
+            self.user1, self.user2 = self.user2, self.user1
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"PrivateRoom between {self.user1} and {self.user2}"
+
+
+class GroupRoom(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=128)
     username = models.CharField(max_length=32, unique=True, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
-    profile_pic = models.FileField(upload_to="room_pictures/", blank=True, null=True)
-
+    profile_pic = models.FileField(upload_to="group_pictures/", blank=True, null=True)
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        through="RoomMember",
-        related_name="rooms"
+        through="GroupRoomMember",
+        related_name="group_rooms"
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
-
-
-    def clean(self):
-        if self.room_type == self.PRIVATE:
-            if self.name or self.username or self.description or self.profile_pic:
-                raise ValidationError("Private chat uchun name, username, description, profile_pic bo'sh bo'lishi kerak.")
-        if self.room_type == self.GROUP:
-            if not self.name:
-                raise ValidationError("Group chat uchun name majburiy.")
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.room_type}: {self.name or self.id}"
+        return self.name
 
-
-class RoomMember(models.Model):
+class GroupRoomMember(models.Model):
     MEMBER = "member"
     ADMIN = "admin"
     OWNER = "owner"
@@ -53,7 +54,7 @@ class RoomMember(models.Model):
         (OWNER, "Owner"),
     ]
 
-    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name="room_members")
+    room = models.ForeignKey(GroupRoom, on_delete=models.CASCADE, related_name="group_room_members")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(max_length=10, choices=ROLES, default=MEMBER)
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -67,7 +68,8 @@ class RoomMember(models.Model):
 
 class Message(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name="messages")
+    private_room = models.ForeignKey(PrivateRoom, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
+    group_room = models.ForeignKey(GroupRoom, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="messages")
     text = models.TextField(blank=True, null=True)
     reply_to = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="replies")

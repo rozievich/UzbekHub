@@ -132,12 +132,12 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
         return value
 
-    def to_representation(self, instance):
-        represantation = super().to_representation(instance)
-        user_status = redis_client.sismember("online_users", represantation['id'])
-        if user_status:
-            represantation['last_online'] = "online"
-        return represantation
+    # def to_representation(self, instance):
+    #     represantation = super().to_representation(instance)
+    #     user_status = redis_client.sismember("online_users", represantation['id'])
+    #     if user_status:
+    #         represantation['last_online'] = "online"
+    #     return represantation
 
 
 # UserProfileSerializer with distance    
