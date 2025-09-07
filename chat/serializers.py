@@ -27,7 +27,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class RoomMemberSerializer(serializers.ModelSerializer):
+class GroupRoomMemberSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     room = serializers.PrimaryKeyRelatedField(queryset=GroupRoom.objects.all())
 
@@ -35,8 +35,6 @@ class RoomMemberSerializer(serializers.ModelSerializer):
         model = GroupRoomMember
         fields = "__all__"
     
-    def validate(self, attrs):
-        return super().validate(attrs)
 
 
 class MessageStatusSerializer(serializers.ModelSerializer):
@@ -76,6 +74,7 @@ class PrivateRoomSerializer(serializers.ModelSerializer):
 
 # GroupRoom model serializer
 class GroupRoomSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = GroupRoom
         fields = "__all__"

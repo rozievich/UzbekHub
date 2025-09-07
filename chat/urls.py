@@ -4,6 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     PrivateRoomAPIView,
     PrivateRoomDetailAPIView,
+    GroupRoomAPIView,
+    GroupRoomDetailAPIView,
 )
 
 # router = DefaultRouter()
@@ -16,5 +18,7 @@ from .views import (
 urlpatterns = [
     path('private/', PrivateRoomAPIView.as_view(), name='private-room-list-create'),
     path('private/<uuid:id>/', PrivateRoomDetailAPIView.as_view(), name='private-room-detail'),
+    path('group/', GroupRoomAPIView.as_view(), name='group-room-list-create'),
+    path('group/<uuid:id>/', GroupRoomDetailAPIView.as_view(), name='group-room-detail'),
     # path('', include(router.urls)),
 ]

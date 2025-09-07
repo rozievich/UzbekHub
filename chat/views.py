@@ -7,7 +7,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .models import PrivateRoom, GroupRoomMember, Message, File, MessageStatus
 from .serializers import (
     PrivateRoomSerializer,
-    RoomMemberSerializer,
+    GroupRoomMemberSerializer,
     MessageSerializer,
     FileSerializer,
     MessageStatusSerializer,
@@ -60,6 +60,49 @@ class PrivateRoomDetailAPIView(APIView):
         except PrivateRoom.DoesNotExist:
             return Response({"detail": "Room not found."}, status=404)
     
+
+# GroupRoom api view
+class GroupRoomAPIView(APIView):
+    queryset = GroupRoomMember.objects.all()
+    serializer_class = GroupRoomMemberSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, format=None, *args, **kwargs):
+        memberships = self.queryset.filter(user=request.user)
+        serializer = self.serializer_class(memberships, many=True)
+        return Response(serializer.data, status=200)
+
+    @swagger_auto_schema(request_body=GroupRoomMemberSerializer)
+    def post(self, request, format=None, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            membership = serializer.save()
+            return Response(self.serializer_class(membership).data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+# GroupRoom detail view\
+class GroupRoomDetailAPIView(APIView):
+    queryset = GroupRoomMember.objects.all()
+    serializer_class = GroupRoomMemberSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, id, format=None, *args, **kwargs):
+        try:
+            membership = self.queryset.get(id=id, user=request.user)
+            serializer = self.serializer_class(membership)
+            return Response(serializer.data, status=200)
+        except GroupRoomMember.DoesNotExist:
+            return Response({"detail": "Membership not found."}, status=404)
+    
+    def delete(self, request, id, format=None, *args, **kwargs):
+        try:
+            membership = self.queryset.get(id=id, user=request.user)
+            membership.delete()
+            return Response(status=204)
+        except GroupRoomMember.DoesNotExist:
+            return Response({"detail": "Membership not found."}, status=404)
+
 
 # class ChatRoomViewSet(viewsets.ModelViewSet):
 #     queryset = ChatRoom.objects.all()
