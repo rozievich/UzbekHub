@@ -31,7 +31,8 @@ from .serializers import (
     UserBlockSerializer,
     UserStatusModelSerializer,
     DeleteAccountSerializer,
-    UserProfileWithDistanceSerializer
+    UserProfileWithDistanceSerializer,
+    UserWithoutEmailSerializer
 )
 
 
@@ -355,7 +356,7 @@ class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
 
 # Username and FistName LastName and email search
 class ProfileSearchAPIView(APIView):
-    serializer_class = CustomUserMyProfileSerializer
+    serializer_class = UserWithoutEmailSerializer
     permission_classes = (IsAuthenticated, )
 
     def get(self, request, key):
@@ -366,7 +367,7 @@ class ProfileSearchAPIView(APIView):
 
 
 class ProfileDetailAPIView(APIView):
-    serializer_class = CustomUserMyProfileSerializer
+    serializer_class = UserWithoutEmailSerializer
     permission_classes = (IsAuthenticated, )
 
     def get(self, request, pk):
