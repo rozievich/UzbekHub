@@ -3,7 +3,7 @@ import redis
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 from django.utils import timezone
-from .models import PrivateRoom, Message, File, MessageAction, MessageStatus
+from .models import ChatRoom, Message, File, MessageAction, MessageStatus
 
 redis_client = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, decode_responses=True)
 HEARTBEAT_TTL = 60  # client ping intervalini ~25-30s qil
@@ -66,7 +66,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
     def _handle_join_rooms(self, data):
         room_ids = data.get("rooms", [])
         # faqat a'zo bo‘lgan xonalar
-        qs = PrivateRoom.objects.filter(id__in=room_ids, members__id=self.user.id).values_list("id", flat=True)
+        qs = ChatRoom.objects.filter(id__in=room_ids, members__id=self.user.id).values_list("id", flat=True)
         for rid in qs:
             async_to_sync(self.channel_layer.group_add)(f"chat.{rid}", self.channel_name)
             self.joined_rooms.add(str(rid))
@@ -79,7 +79,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if room_id not in self.joined_rooms:
             return  # not authorized or not joined
 
-        room = PrivateRoom.objects.filter(id=room_id, members__id=self.user.id).first()
+        room = ChatRoom.objects.filter(id=room_id, members__id=self.user.id).first()
         if not room:
             return
 

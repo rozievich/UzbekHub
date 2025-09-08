@@ -1,8 +1,7 @@
 from rest_framework import serializers
 
 from accounts.models import CustomUser
-from accounts.serializers import CustomUserMyProfileSerializer
-from .models import PrivateRoom, GroupRoom, GroupRoomMember, Message, File, MessageStatus
+from .models import ChatRoom, RoomMember, Message, File, MessageStatus
 
 
 class FileSerializer(serializers.ModelSerializer):
@@ -27,14 +26,47 @@ class MessageSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class GroupRoomMemberSerializer(serializers.ModelSerializer):
+class RoomMemberSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
-    room = serializers.PrimaryKeyRelatedField(queryset=GroupRoom.objects.all())
+    room = serializers.PrimaryKeyRelatedField(queryset=ChatRoom.objects.all())
 
     class Meta:
-        model = GroupRoomMember
+        model = RoomMember
         fields = "__all__"
     
+    def validate(self, attrs):
+        return super().validate(attrs)
+
+
+class ChatRoomSerializer(serializers.ModelSerializer):
+    members = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True)
+    room_members = RoomMemberSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ChatRoom
+        fields = "__all__"
+
+    def validate(self, attrs):
+        members = attrs.get('members', [])
+        room_type = attrs.get('room_type')
+
+        if not members:
+            raise serializers.ValidationError("At least one member must be added to the room.")
+
+        if len(members) != len(set(members)):
+            raise serializers.ValidationError("Members must be unique.")
+
+        if room_type == ChatRoom.PRIVATE and len(members) != 2:
+            raise serializers.ValidationError("Private rooms must have exactly 2 members.")
+
+        if room_type == ChatRoom.PRIVATE:
+            qs = ChatRoom.objects.filter(room_type=ChatRoom.PRIVATE)
+            for member in members:
+                qs = qs.filter(members=member)
+            if qs.exists():
+                raise serializers.ValidationError("A private room with these members already exists.")
+
+        return attrs
 
 
 class MessageStatusSerializer(serializers.ModelSerializer):
@@ -43,38 +75,4 @@ class MessageStatusSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MessageStatus
-        fields = "__all__"
-
-
-# PrivateRoom model serializer
-class PrivateRoomSerializer(serializers.ModelSerializer):
-    user1 = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    user2 = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
-
-    class Meta:
-        model = PrivateRoom
-        fields = "__all__"
-
-    def validate(self, attrs):
-        user1 = attrs.get('user1')
-        user2 = attrs.get('user2')
-        if user1 == user2:
-            raise serializers.ValidationError("Cannot create a private room with yourself.")
-        if PrivateRoom.objects.filter(user1=user1, user2=user2).exists() or \
-           PrivateRoom.objects.filter(user1=user2, user2=user1).exists():
-            raise serializers.ValidationError("Private room between these users already exists.")
-        return attrs
-    
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['user1'] = CustomUserMyProfileSerializer(instance.user1).data
-        data['user2'] = CustomUserMyProfileSerializer(instance.user2).data
-        return data
-
-
-# GroupRoom model serializer
-class GroupRoomSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = GroupRoom
         fields = "__all__"
