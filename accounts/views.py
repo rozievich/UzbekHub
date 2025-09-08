@@ -1,5 +1,5 @@
 from uuid import uuid4
-from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from drf_yasg import openapi
 from django.conf import settings
 from django.core.cache import cache
@@ -361,9 +361,17 @@ class ProfileSearchAPIView(APIView):
 
     def get(self, request, key):
         blocked_me = UserBlock.objects.filter(blocked_user=request.user).values_list('user_id', flat=True)
-        query_users = CustomUser.objects.filter(username__icontains=key).exclude(id__in=blocked_me)
+
+        query_users = CustomUser.objects.filter(
+            Q(username__icontains=key) |
+            Q(first_name__icontains=key) |
+            Q(last_name__icontains=key),
+            is_private=False
+        ).exclude(id__in=blocked_me)
+
         serializer = self.serializer_class(query_users, many=True)
         return Response(serializer.data, status=200)
+
 
 
 class ProfileDetailAPIView(APIView):
@@ -372,7 +380,7 @@ class ProfileDetailAPIView(APIView):
 
     def get(self, request, pk):
         blocked_me = UserBlock.objects.filter(blocked_user=request.user).values_list('user_id', flat=True)
-        user = CustomUser.objects.filter(id=pk).exclude(id__in=blocked_me).first()
+        user = CustomUser.objects.filter(id=pk).exclude(id__in=blocked_me).exclude(is_private=True).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
         serializer = self.serializer_class(user)

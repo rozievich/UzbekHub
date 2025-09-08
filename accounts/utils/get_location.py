@@ -21,7 +21,7 @@ def get_nearby_users(user, radius_km=10):
     user_loc = (float(user.location.lat), float(user.location.long))
     nearby = []
 
-    for loc in Location.objects.exclude(owner=user):
+    for loc in Location.objects.exclude(owner=user, owner__is_private=False):
         target = (float(loc.lat), float(loc.long))
         distance = geodesic(user_loc, target).km
         if distance <= radius_km:
