@@ -32,6 +32,7 @@ class CustomUser(AbstractUser):
     bio = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     phone = models.CharField(max_length=15, blank=True, null=True, validators=[validate_phone_number])
+    is_private = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)

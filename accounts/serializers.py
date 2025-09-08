@@ -92,7 +92,7 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("id", "first_name", "last_name", "email", "username", "bio", "status", "location", "profile_picture", "phone", "is_active", "is_staff", "date_joined", "last_login", "last_online", "password")
+        fields = ("id", "first_name", "last_name", "email", "username", "bio", "status", "location", "profile_picture", "phone", "is_private", "is_active", "is_staff", "date_joined", "last_login", "last_online", "password")
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
@@ -140,12 +140,18 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
         return represantation
 
 
+# EMAIL without serilalizer
+class UserWithoutEmailSerializer(CustomUserMyProfileSerializer):
+    class Meta(CustomUserMyProfileSerializer.Meta):
+        fields = [field for field in CustomUserMyProfileSerializer.Meta.fields if field != 'email']
+
+
 # UserProfileSerializer with distance    
-class UserProfileWithDistanceSerializer(CustomUserMyProfileSerializer):
+class UserProfileWithDistanceSerializer(UserWithoutEmailSerializer):
     distance = serializers.FloatField()
 
-    class Meta(CustomUserMyProfileSerializer.Meta):
-        fields = CustomUserMyProfileSerializer.Meta.fields + ("distance",)
+    class Meta(UserWithoutEmailSerializer.Meta):
+        fields = UserWithoutEmailSerializer.Meta.fields + ["distance"]
 
 
 # Forget password serializer
