@@ -2,7 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 
-from .models import CustomUser, Location, UserBlock, Status
+from .models import CustomUser, Location, UserBlock, Status, Contact
 from chat.consumers import redis_client
 
 
@@ -244,3 +244,13 @@ class DeleteAccountSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError("The password is incorrect.")
         return value
+
+
+# Contact model serializer
+class ContactModelSerializer(serializers.ModelSerializer):
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    contact = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
+
+    class Meta:
+        model = Contact
+        fields = "__all__"

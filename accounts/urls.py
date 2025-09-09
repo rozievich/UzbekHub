@@ -21,7 +21,9 @@ from accounts.views import (
     UserDeleteRequestAPIView,
     AcceptDeleteAccountAPIView,
     UserStatusAPIView,
-    UserLocationSearchAPIView
+    UserLocationSearchAPIView,
+    ContactAPIView,
+    ContactDetailAPIView
 )
 
 router = DefaultRouter()
@@ -49,5 +51,7 @@ urlpatterns = [
     path('account/block/<int:pk>/', BlockedUserDetailAPIView.as_view(), name="blocked_user_detail"),
     path('account/status/', UserStatusAPIView.as_view(), name="user_status"),
     path('account/location/<str:distance>/', UserLocationSearchAPIView.as_view(), name="user_location_search"),
+    path('account/contact/', ContactAPIView.as_view(), name="user_contact"),
+    path('account/contact/<int:pk>/', ContactDetailAPIView.as_view(), name="user_contact_detail"),
     path('', include(router.urls))
 ]

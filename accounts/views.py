@@ -14,7 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .oauth2 import oauth2_sign_in
 from .tokens import get_tokens_for_user
 from accounts.utils.get_location import get_my_location, get_nearby_users
-from .models import CustomUser, Location, UserBlock, Status
+from .models import CustomUser, Location, UserBlock, Status, Contact
 from .tasks import delete_account_email, send_to_gmail, send_password_reset_email
 from stories.permissions import IsOwnerPermission
 from .permissions import IsAdminPermission
@@ -32,7 +32,8 @@ from .serializers import (
     UserStatusModelSerializer,
     DeleteAccountSerializer,
     UserProfileWithDistanceSerializer,
-    UserWithoutEmailSerializer
+    UserWithoutEmailSerializer,
+    ContactModelSerializer
 )
 
 
@@ -487,6 +488,72 @@ class UserLocationSearchAPIView(APIView):
         nearby_locations = get_nearby_users(request.user, distance)
         serializer = self.serializer_class(nearby_locations, many=True, context={"request": request})
         return Response(serializer.data, status=200)
+
+
+# Contact API View
+class ContactAPIView(APIView):
+    queryset = Contact.objects.all()
+    serializer_class = ContactModelSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, *args, **kwargs):
+        contacts = self.queryset.filter(owner=self.request.user)
+        serializer = self.serializer_class(contacts, many=True)
+        return Response(serializer.data, status=200)
+    
+
+    @swagger_auto_schema(request_body=ContactModelSerializer)
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+# Contact detail api view
+class ContactDetailAPIView(APIView):
+    queryset = Contact.objects.all()
+    serializer_class = ContactModelSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, pk, *args, **kwargs):
+        contact = self.queryset.filter(owner=request.user, contact=pk).first()
+        serializer = self.serializer_class(contact)
+        return Response(serializer.data, status=200)
+    
+    def put(self, request, pk, *args, **kwargs):
+        try:
+            contact = self.queryset.filter(contact=pk)
+        except Contact.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        serializer = self.serializer_class(contact, data=request.data, partial=False)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
+
+    def patch(self, request, pk, *args, **kwargs):
+        try:
+            contact = self.queryset.filter(contact=pk)
+        except Contact.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        serializer = self.serializer_class(contact, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk, *args, **kwargs):
+        try:
+            contact = self.queryset.filter(contact=pk)
+        except Contact.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+
+        contact.delete()
+        return Response(status=204)
 
 
 # Adminstrators APIs

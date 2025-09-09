@@ -6,7 +6,7 @@ from django.utils import timezone
 from .models import ChatRoom, Message, File, MessageAction, MessageStatus
 
 redis_client = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, decode_responses=True)
-HEARTBEAT_TTL = 60  # client ping intervalini ~25-30s qil
+HEARTBEAT_TTL = 60
 
 class MultiRoomChatConsumer(WebsocketConsumer):
     def connect(self):
@@ -15,7 +15,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             self.close()
             return
         self.user = user
-        self.joined_rooms = set()  # room_id lar to‘plami
+        self.joined_rooms = set()
         self.accept()
         self._set_online()
 
