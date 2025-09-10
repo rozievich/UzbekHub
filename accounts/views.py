@@ -368,7 +368,11 @@ class ProfileSearchAPIView(APIView):
             Q(first_name__icontains=key) |
             Q(last_name__icontains=key),
             is_private=False
-        ).exclude(id__in=blocked_me)
+        ).exclude(
+            id__in=blocked_me
+        ).exclude(
+            id=request.user.id
+        )
 
         serializer = self.serializer_class(query_users, many=True)
         return Response(serializer.data, status=200)
