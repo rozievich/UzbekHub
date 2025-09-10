@@ -518,13 +518,13 @@ class ContactDetailAPIView(APIView):
     permission_classes = (IsAuthenticated, )
 
     def get(self, request, pk, *args, **kwargs):
-        contact = self.queryset.filter(owner=request.user, contact=pk).first()
+        contact = self.queryset.filter(owner=request.user, id=pk).first()
         serializer = self.serializer_class(contact)
         return Response(serializer.data, status=200)
     
     def put(self, request, pk, *args, **kwargs):
         try:
-            contact = self.queryset.filter(contact=pk)
+            contact = self.queryset.filter(id=pk)
         except Contact.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
 
@@ -536,7 +536,7 @@ class ContactDetailAPIView(APIView):
 
     def patch(self, request, pk, *args, **kwargs):
         try:
-            contact = self.queryset.filter(contact=pk)
+            contact = self.queryset.filter(id=pk)
         except Contact.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
 
@@ -548,7 +548,7 @@ class ContactDetailAPIView(APIView):
 
     def delete(self, request, pk, *args, **kwargs):
         try:
-            contact = self.queryset.filter(contact=pk)
+            contact = self.queryset.filter(id=pk)
         except Contact.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
 
