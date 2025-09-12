@@ -47,6 +47,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             return
 
         if t == "join_rooms":
+            print("ishladi")
             self._handle_join_rooms(data)
             return
 
@@ -65,24 +66,21 @@ class MultiRoomChatConsumer(WebsocketConsumer):
     # --- handlers ---
     def _handle_join_rooms(self, data):
         room_ids = data.get("rooms", [])
-        # faqat a'zo bo‘lgan xonalar
         qs = ChatRoom.objects.filter(id__in=room_ids, members__id=self.user.id).values_list("id", flat=True)
         for rid in qs:
             async_to_sync(self.channel_layer.group_add)(f"chat.{rid}", self.channel_name)
             self.joined_rooms.add(str(rid))
 
-        # Join bo‘lgach, shu xonalardagi yetkazilmaganlarni yuboramiz
         self._send_undelivered_messages()
 
     def _handle_message(self, data):
         room_id = str(data.get("room_id"))
         if room_id not in self.joined_rooms:
-            return  # not authorized or not joined
-
+            return
+        print("ishladi")
         room = ChatRoom.objects.filter(id=room_id, members__id=self.user.id).first()
         if not room:
             return
-
         text = data.get("text")
         reply_to_id = data.get("reply_to")
         file_id = data.get("file_id")

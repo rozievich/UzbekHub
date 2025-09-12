@@ -195,18 +195,52 @@ class RoomMemberViewSet(viewsets.ViewSet):
         return Response({"detail": "User topilmadi."}, status=404)
 
 
-# class MessageViewSet(viewsets.ModelViewSet):
-#     """Xabarlarni boshqarish (CRUD)"""
-#     serializer_class = MessageSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#     parser_classes = [MultiPartParser, FormParser]
+class MessageViewSet(viewsets.ModelViewSet):
+    serializer_class = MessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
-#     def get_queryset(self):
-#         return Message.objects.filter(room__members=self.request.user)
+    def get_queryset(self):
+        qs = Message.objects.filter(room__members=self.request.user).select_related("sender", "room")
 
-#     def perform_create(self, serializer):
-#         serializer.save(sender=self.request.user)
+        room_id = self.request.query_params.get("room_id")
+        if room_id:
+            qs = qs.filter(room_id=room_id)
 
+        return qs.order_by("-created_at")
+
+    def perform_create(self, serializer):
+        room = serializer.validated_data.get("room")
+        if not room.members.filter(id=self.request.user.id).exists():
+            return Response(
+                {"detail": "Siz bu xonaga a'zo emassiz."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer.save(sender=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.sender != request.user:
+            return Response(
+                {"detail": "Siz faqat o'z xabaringizni tahrirlashingiz mumkin."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.sender != request.user:
+            return Response(
+                {"detail": "Siz faqat o'z xabaringizni o'chirishingiz mumkin."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    def retrieve(self, request, pk):
+        qs = Message.objects.filter(room_id=pk).order_by("-created_at")
+        serializer = MessageSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data)
+    
 
 # class FileViewSet(viewsets.ReadOnlyModelViewSet):
 #     serializer_class = FileSerializer
