@@ -23,7 +23,8 @@ from accounts.views import (
     UserStatusAPIView,
     UserLocationSearchAPIView,
     ContactAPIView,
-    ContactDetailAPIView
+    ContactDetailAPIView,
+    PublicProfileAPIView
 )
 
 router = DefaultRouter()
@@ -53,5 +54,6 @@ urlpatterns = [
     path('account/location/<str:distance>/', UserLocationSearchAPIView.as_view(), name="user_location_search"),
     path('account/contact/', ContactAPIView.as_view(), name="user_contact"),
     path('account/contact/<int:pk>/', ContactDetailAPIView.as_view(), name="user_contact_detail"),
+    path('account/profile/<str:username>/', PublicProfileAPIView.as_view(), name="profile_search_username"),
     path('', include(router.urls))
 ]

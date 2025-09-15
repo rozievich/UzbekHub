@@ -47,7 +47,6 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             return
 
         if t == "join_rooms":
-            print("ishladi")
             self._handle_join_rooms(data)
             return
 

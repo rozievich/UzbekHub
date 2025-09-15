@@ -33,7 +33,8 @@ from .serializers import (
     DeleteAccountSerializer,
     UserProfileWithDistanceSerializer,
     UserWithoutEmailSerializer,
-    ContactModelSerializer
+    ContactModelSerializer,
+    PublicProfileModelSerializer
 )
 
 
@@ -389,6 +390,20 @@ class ProfileDetailAPIView(APIView):
         if not user:
             return Response({"error": "User not found"}, status=404)
         serializer = self.serializer_class(user)
+        return Response(serializer.data, status=200)
+
+
+# Profile Public api
+class PublicProfileAPIView(APIView):
+    queryset = CustomUser.objects.filter(is_private=False)
+    serializer_class = PublicProfileModelSerializer
+    permission_classes = (AllowAny, )
+
+    def get(self, request, username):
+        data = self.queryset.filter(username=username).first()
+        if not data:
+            return Response({"detail": "User not found"}, status=404)
+        serializer = self.serializer_class(data)
         return Response(serializer.data, status=200)
 
 

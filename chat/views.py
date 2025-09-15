@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import ValidationError
 
 from .models import ChatRoom, Message, File, RoomMember
 from .serializers import (
@@ -13,11 +14,16 @@ from .serializers import (
 )
 
 
+# =======================
+# Chat Room ViewSet
+# =======================
 class ChatRoomViewSet(viewsets.ModelViewSet):
     serializer_class = ChatRoomSerializer
     permission_classes = (permissions.IsAuthenticated, )
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ChatRoom.objects.none()
         return ChatRoom.objects.filter(members=self.request.user)
 
     def create(self, request, *args, **kwargs):
@@ -56,7 +62,9 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         return Response({"detail": "The room type was incorrectly specified."}, status=403)
 
 
-# Room Members modelviewset
+# =======================
+# Room Members ViewSet
+# =======================
 class RoomMemberViewSet(viewsets.ViewSet):
     permission_classes = (permissions.IsAuthenticated, )
 
@@ -188,19 +196,24 @@ class RoomMemberViewSet(viewsets.ViewSet):
             return error
         if actor.role not in [RoomMember.OWNER, RoomMember.ADMIN]:
             return Response({"detail": "Faqat admin yoki owner user chiqarishi mumkin."}, status=403)
-        user_id = request.data.get("user_id")
         deleted, _ = RoomMember.objects.filter(room=room, user_id=user_id).delete()
         if deleted:
             return Response({"detail": "User groupdan chiqarildi."})
         return Response({"detail": "User topilmadi."}, status=404)
 
 
+# =======================
+# Message ViewSet
+# =======================
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Message.objects.none()
+
         qs = Message.objects.filter(room__members=self.request.user).select_related("sender", "room")
 
         room_id = self.request.query_params.get("room_id")
@@ -212,10 +225,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         room = serializer.validated_data.get("room")
         if not room.members.filter(id=self.request.user.id).exists():
-            return Response(
-                {"detail": "Siz bu xonaga a'zo emassiz."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise ValidationError({"detail": "Siz bu xonaga a'zo emassiz."})
         serializer.save(sender=self.request.user)
 
     def update(self, request, *args, **kwargs):
@@ -236,15 +246,22 @@ class MessageViewSet(viewsets.ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
-    def retrieve(self, request, pk):
-        qs = Message.objects.filter(room_id=pk).order_by("-created_at")
-        serializer = MessageSerializer(qs, many=True, context={"request": request})
+    @action(detail=False, methods=["get"], url_path=r'room/(?P<room_id>\d+)')
+    def list_by_room(self, request, room_id=None):
+        """Berilgan xonadagi barcha xabarlarni olish"""
+        qs = Message.objects.filter(room_id=room_id).order_by("-created_at")
+        serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
-    
 
-# class FileViewSet(viewsets.ReadOnlyModelViewSet):
-#     serializer_class = FileSerializer
-#     permission_classes = [permissions.IsAuthenticated]
 
-#     def get_queryset(self):
-#         return File.objects.filter(message__sender=self.request.user)
+# =======================
+# File ViewSet
+# =======================
+class FileViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = FileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return File.objects.none()
+        return File.objects.filter(message__room__members=self.request.user).select_related("message", "message__sender")

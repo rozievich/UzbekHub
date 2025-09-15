@@ -132,12 +132,12 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
         return value
 
-    # def to_representation(self, instance):
-    #     represantation = super().to_representation(instance)
-    #     user_status = redis_client.sismember("online_users", represantation['id'])
-    #     if user_status:
-    #         represantation['last_online'] = "online"
-    #     return represantation
+    def to_representation(self, instance):
+        represantation = super().to_representation(instance)
+        user_status = redis_client.get(f"online_user:{represantation['id']}")
+        if user_status:
+            represantation['last_online'] = "online"
+        return represantation
 
 
 # EMAIL without serilalizer
@@ -254,3 +254,10 @@ class ContactModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = "__all__"
+
+
+# Username yordamida userning bir nechta qiymatini olish
+class PublicProfileModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ("first_name", "last_name", "username", "bio", "profile_picture")
