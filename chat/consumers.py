@@ -76,7 +76,6 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         room_id = str(data.get("room_id"))
         if room_id not in self.joined_rooms:
             return
-        print("ishladi")
         room = ChatRoom.objects.filter(id=room_id, members__id=self.user.id).first()
         if not room:
             return
@@ -148,7 +147,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         message = Message.objects.select_related("room").filter(id=message_id).first()
         if not message or str(message.room_id) not in self.joined_rooms:
             return
-
+        
         status = MessageStatus.objects.filter(message=message, user=self.user).first()
         if status and not status.is_read:
             status.is_read = True

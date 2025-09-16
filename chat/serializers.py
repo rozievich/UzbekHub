@@ -2,12 +2,17 @@ from rest_framework import serializers
 
 from accounts.models import CustomUser
 from .models import ChatRoom, RoomMember, Message, File, MessageStatus
-
+from .validators import validate_user_storage
 
 class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = "__all__"
+
+    def validate_file(self, value):
+        user = self.context["request"].user
+        validate_user_storage(user, value)
+        return value
 
 
 class MessageSerializer(serializers.ModelSerializer):

@@ -3,6 +3,7 @@ from channels.middleware import BaseMiddleware
 from channels.db import database_sync_to_async
 from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth import get_user_model
+from urllib.parse import parse_qs
 
 User = get_user_model()
 
@@ -14,18 +15,17 @@ def get_user(user_id):
 
 class JwtAuthTokenMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
-        headers = dict(scope["headers"])
+        query_string = scope.get("query_string", b"").decode()
+        query_params = parse_qs(query_string)
+        token_list = query_params.get("token")
 
-        if b'authorization' in headers:
-            auth_header = headers[b'authorization'].decode()
-            if auth_header.startswith("Bearer"):
-                token = auth_header.split(" ")[1]
-                access_token = AccessToken(token)
-                user = await get_user(access_token['user_id'])
-                if user is None:
-                    scope['user'] = AnonymousUser()
-                else:
-                    scope['user'] = user
+        if token_list:
+            access_token = AccessToken(token_list[0])
+            user = await get_user(access_token['user_id'])
+            if user is None:
+                scope['user'] = AnonymousUser()
+            else:
+                scope['user'] = user
         else:
             scope['user'] = AnonymousUser()
 
