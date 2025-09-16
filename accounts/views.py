@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import CreateAPIView, UpdateAPIView, DestroyAPIView
+from rest_framework.throttling import ScopedRateThrottle
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -67,6 +68,8 @@ class CustomUserRegisterAPIView(CreateAPIView):
 
 # EmailVerify view
 class EmailVerifyCreateAPIView(CreateAPIView):
+    throttle_classes = (ScopedRateThrottle, )
+    throttle_scope = "email_verify"
     permission_classes = (AllowAny,)
     serializer_class = EmailVerificationSerializer
 
@@ -117,6 +120,8 @@ class GoogleLoginAPIView(APIView):
 
 # ForgotPassword view
 class ForgotPasswordAPIView(APIView):
+    throttle_classes = (ScopedRateThrottle, )
+    throttle_scope = "forget_password"
     permission_classes = (AllowAny,)
     serializer_class = ForgetPasswordSerializer
 
@@ -147,6 +152,8 @@ class ForgotPasswordAPIView(APIView):
 
 # NewPassword view
 class NewPasswordAPIView(APIView):
+    throttle_classes = (ScopedRateThrottle, )
+    throttle_scope = "new_password"
     permission_classes = (AllowAny,)
     serializer_class = ResetPasswordSerializer
 
@@ -358,6 +365,8 @@ class LocationAPIView(CreateAPIView, UpdateAPIView, DestroyAPIView):
 
 # Username and FistName LastName and email search
 class ProfileSearchAPIView(APIView):
+    throttle_classes = (ScopedRateThrottle, )
+    throttle_scope = "profile_search"
     serializer_class = UserWithoutEmailSerializer
     permission_classes = (IsAuthenticated, )
 
@@ -395,6 +404,8 @@ class ProfileDetailAPIView(APIView):
 
 # Profile Public api
 class PublicProfileAPIView(APIView):
+    throttle_classes = (ScopedRateThrottle, )
+    throttle_scope = "public_profile"
     queryset = CustomUser.objects.filter(is_private=False)
     serializer_class = PublicProfileModelSerializer
     permission_classes = (AllowAny, )

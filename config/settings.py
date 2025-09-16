@@ -107,6 +107,13 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "email_verify": "6/minute",
+        "forget_password": "6/minute",
+        "new_password": "6/minute",
+        "profile_search": "60/minute",
+        "public_profile": "10/minute",
+    },
 }
 
 
