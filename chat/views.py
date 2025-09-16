@@ -246,12 +246,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
-    @action(detail=False, methods=["get"], url_path=r'room/(?P<room_id>\d+)')
+    @action(detail=False, methods=["get"], url_path=r'room/(?P<room_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')
     def list_by_room(self, request, room_id=None):
-        """Berilgan xonadagi barcha xabarlarni olish"""
         qs = Message.objects.filter(room_id=room_id).order_by("-created_at")
         serializer = self.get_serializer(qs, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=200)
 
 
 # =======================
