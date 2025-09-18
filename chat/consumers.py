@@ -125,8 +125,8 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                 "message_id": str(message.id),
                 "text": message.text,
                 "sender": self.user.username,
-                "reply_to": reply_to_id,
-                "file_id": file_id,
+                "reply_to": str(reply_to_id),
+                "file_id": str(file_id),
                 "created_at": message.created_at.isoformat()
             }
         )
@@ -275,8 +275,8 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                 "room_id": str(msg.room_id),
                 "message_id": str(msg.id),
                 "text": msg.text,
-                "sender": msg.sender.username,
-                "reply_to": msg.reply_to_id,
+                "sender": msg.sender.id,
+                "reply_to": str(msg.reply_to_id),
                 "file_id": getattr(getattr(msg, "file", None), "id", None),
                 "created_at": msg.created_at.isoformat()
             }))
