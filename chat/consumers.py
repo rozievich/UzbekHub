@@ -53,6 +53,14 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if t == "message":
             self._handle_message(data)
             return
+        
+        if t == "edit_message":
+            self._handle_edit_message(data)
+            return
+        
+        if t == "delete_message":
+            self._handle_delete_message(data)
+            return
 
         if t == "read":
             self._handle_read(data)
@@ -123,6 +131,42 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             }
         )
 
+    def _handle_edit_message(self, data):
+        message_id = data.get("message_id")
+        text = data.get("text")
+        message = Message.objects.select_related("room").filter(id=message_id, sender=self.user).first()
+        if not message or str(message.room_id) not in self.joined_rooms:
+            return
+        
+        message.text = text
+        message.is_edited = True
+        message.save(update_fields=["text", "is_edited", "update_at"])
+        async_to_sync(self.channel_layer.group_send)(
+            f"chat.{message.room_id}",
+            {
+                "type": "chat.edit_message",
+                "message_id": message.id,
+                "text": message.text,
+                "created_at": message.created_at.isoformat(),
+                "updated_at": message.update_at.isoformat()
+            }
+        )
+
+    def _handle_delete_message(self, data):
+        message_id = data.get("message_id")
+        message = Message.objects.select_related("room").filter(id=message_id).first()
+        if not message or str(message.room_id) not in self.joined_rooms:
+            return
+        
+        message.delete()
+        async_to_sync(self.channel_layer.group_send)(
+            f"chat.{message.room_id}",
+            {
+                "type": "chat.delete_message",
+                "message_id": message_id
+            }
+        )
+
     def _handle_action(self, data):
         message_id = data.get("message_id")
         value = data.get("value")
@@ -130,7 +174,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if not message or str(message.room_id) not in self.joined_rooms:
             return
 
-        action, _ = MessageAction.objects.get_or_create(message=message, user=self.user, value=value)
+        action, _ = MessageAction.objects.update_or_create(message=message, user=self.user, defaults={"value": value})
         async_to_sync(self.channel_layer.group_send)(
             f"chat.{message.room_id}",
             {
@@ -138,7 +182,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                 "message_id": str(message.id),
                 "value": value,
                 "user": self.user.id,
-                "created_at": action.created_at.isoformat()
+                "created_at": action.created_at.isoformat() if action.created_at else None
             }
         )
 
@@ -162,6 +206,27 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                     "read_at": status.read_at.isoformat()
                 }
             )
+
+    # --- edit message event handlers ---
+    def chat_edit_message(self, event):
+        self.send(text_data=json.dumps(
+            {
+                "type": "edit_message",
+                "message_id": event["message_id"],
+                "text": event["text"],
+                "created_at": event["created_at"],
+                "updated_at": event["updated_at"]
+            }
+        ))
+    
+    # --- delete message event handlers ---
+    def chat_delete_message(self, event):
+        self.send(text_data=json.dumps(
+            {
+                "type": "delete_message",
+                "message_id": event["message_id"]
+            }
+        ))
 
     # --- group event handlers ---
     def chat_message(self, event):
