@@ -218,9 +218,9 @@ class RoomMemberViewSet(viewsets.ViewSet):
 
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
-            f"chat_{room.id}",
+            f"chat.{room.id}",
             {
-                "type": "chat_cleared",
+                "type": "chat.cleared",
                 "room_id": str(room.id),
                 "cleared_by": request.user.id
             }

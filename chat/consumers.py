@@ -8,6 +8,7 @@ from .models import ChatRoom, Message, File, MessageAction, MessageStatus
 redis_client = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, decode_responses=True)
 HEARTBEAT_TTL = 60
 
+
 class MultiRoomChatConsumer(WebsocketConsumer):
     def connect(self):
         user = self.scope["user"]
@@ -297,7 +298,6 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         }))
 
     def chat_cleared(self, event):
-        print(event)
         self.send(text_data=json.dumps({
             "type": "cleared",
             "room_id": event["room_id"],
