@@ -5,6 +5,9 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 from .models import ChatRoom, Message, File, RoomMember
 from .serializers import (
     ChatRoomSerializer,
@@ -200,6 +203,29 @@ class RoomMemberViewSet(viewsets.ViewSet):
         if deleted:
             return Response({"detail": "User groupdan chiqarildi."})
         return Response({"detail": "User topilmadi."}, status=404)
+
+    @action(detail=True, methods=["delete"], url_path="clear_messages")
+    def clear_messages(self, request, pk=None):
+        room = self.get_room(pk)
+        member, error = self.check_membership(room)
+
+        if room.room_type == ChatRoom.GROUP and member.role not in [RoomMember.OWNER, RoomMember.ADMIN]:
+            return Response({"detail": "Guruh chatlarida faqat owner yoki admin xabarlarni tozalashi mumkin."}, status=403)
+        if error:
+            return error
+        
+        room.messages.all().delete()
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{room.id}",
+            {
+                "type": "chat_cleared",
+                "room_id": str(room.id),
+                "cleared_by": request.user.id
+            }
+        )
+        return Response(status=204)
 
 
 # =======================

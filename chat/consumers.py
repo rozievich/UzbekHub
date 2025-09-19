@@ -69,6 +69,10 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if t == "action":
             self._handle_action(data)
             return
+        
+        if t == "typing":
+            self._handle_typing(data)
+            return
 
     # --- handlers ---
     def _handle_join_rooms(self, data):
@@ -83,9 +87,11 @@ class MultiRoomChatConsumer(WebsocketConsumer):
     def _handle_message(self, data):
         room_id = str(data.get("room_id"))
         if room_id not in self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "message", "type": "error", "message": "Not joined to the room"}))
             return
         room = ChatRoom.objects.filter(id=room_id, members__id=self.user.id).first()
         if not room:
+            self.send(text_data=json.dumps({"event": "message", "type": "error", "message": "Not joined to the room"}))
             return
         text = data.get("text")
         reply_to_id = data.get("reply_to")
@@ -136,6 +142,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         text = data.get("text")
         message = Message.objects.select_related("room").filter(id=message_id, sender=self.user).first()
         if not message or str(message.room_id) not in self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "edit_message", "type": "error", "message": "Message not found or not authorized"}))
             return
         
         message.text = text
@@ -145,7 +152,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             f"chat.{message.room_id}",
             {
                 "type": "chat.edit_message",
-                "message_id": message.id,
+                "message_id": str(message.id),
                 "text": message.text,
                 "created_at": message.created_at.isoformat(),
                 "updated_at": message.update_at.isoformat()
@@ -156,6 +163,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         message_id = data.get("message_id")
         message = Message.objects.select_related("room").filter(id=message_id).first()
         if not message or str(message.room_id) not in self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "delete_message", "type": "error", "message": "Message not found or not authorized"}))
             return
         
         message.delete()
@@ -172,6 +180,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         value = data.get("value")
         message = Message.objects.select_related("room").filter(id=message_id).first()
         if not message or str(message.room_id) not in self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "action", "type": "error", "message": "Message not found or not authorized"}))
             return
 
         action, _ = MessageAction.objects.update_or_create(message=message, user=self.user, defaults={"value": value})
@@ -190,8 +199,9 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         message_id = data.get("message_id")
         message = Message.objects.select_related("room").filter(id=message_id).first()
         if not message or str(message.room_id) not in self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "read", "type": "error", "message": "Message not found or not authorized"}))
             return
-        
+
         status = MessageStatus.objects.filter(message=message, user=self.user).first()
         if status and not status.is_read:
             status.is_read = True
@@ -206,6 +216,27 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                     "read_at": status.read_at.isoformat()
                 }
             )
+    
+    def _handle_typing(self, data):
+        room_id = str(data.get("room_id"))
+        is_typing = data.get("is_typing", False)
+
+        if room_id not in self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "typing", "type": "error", "message": "Not joined to the room"}))
+            return
+        room = ChatRoom.objects.filter(id=room_id, members__id=self.user.id).first()
+        if not room:
+            self.send(text_data=json.dumps({"event": "typing", "type": "error", "message": "Not joined to the room"}))
+            return
+        
+        async_to_sync(self.channel_layer.group_send)(
+            f"chat.{room_id}",
+            {
+                "type": "chat.typing",
+                "user": self.user.id,
+                "is_typing": is_typing
+            }
+        )
 
     # --- edit message event handlers ---
     def chat_edit_message(self, event):
@@ -258,9 +289,25 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             "read_at": event["read_at"]
         }))
 
+    def chat_typing(self, event):
+        self.send(text_data=json.dumps({
+            "type": "typing",
+            "user": event["user"],
+            "is_typing": event["is_typing"]
+        }))
+
+    def chat_cleared(self, event):
+        print(event)
+        self.send(text_data=json.dumps({
+            "type": "cleared",
+            "room_id": event["room_id"],
+            "cleared_by": event["cleared_by"]
+        }))
+
     # --- undelivered ---
     def _send_undelivered_messages(self):
         if not self.joined_rooms:
+            self.send(text_data=json.dumps({"event": "undelivered_messages", "type": "error", "message": "Not joined to any room"}))
             return
         qs = (MessageStatus.objects
               .filter(user=self.user, is_delivered=False, message__room_id__in=self.joined_rooms)
