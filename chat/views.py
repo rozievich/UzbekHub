@@ -296,7 +296,7 @@ class MessageViewSet(viewsets.ModelViewSet):
 # =======================
 # File ViewSet
 # =======================
-class FileViewSet(viewsets.ReadOnlyModelViewSet):
+class FileViewSet(viewsets.ModelViewSet):
     serializer_class = FileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
