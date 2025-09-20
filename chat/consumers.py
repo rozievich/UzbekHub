@@ -17,12 +17,19 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             return
         self.user = user
         self.joined_rooms = set()
+
+        redis_client.sadd(f"user_channels:{self.user.id}", self.channel_name)
+        redis_client.setex(f"channel:{self.channel_name}", HEARTBEAT_TTL, self.user.id)
+
         self.accept()
         self._set_online()
+
 
     def disconnect(self, code):
         for rid in list(self.joined_rooms):
             async_to_sync(self.channel_layer.group_discard)(f"chat.{rid}", self.channel_name)
+        redis_client.srem(f"user_channels:{self.user.id}", self.channel_name)
+        redis_client.delete(f"channel:{self.channel_name}")
         redis_client.delete(f"online_user:{self.user.id}")
         try:
             self.user.last_online = timezone.now()
@@ -32,7 +39,8 @@ class MultiRoomChatConsumer(WebsocketConsumer):
 
     # --- helpers ---
     def _set_online(self):
-        redis_client.setex(f"online_user:{self.user.id}", HEARTBEAT_TTL, "1")
+        redis_client.expire(f"channel:{self.channel_name}", HEARTBEAT_TTL)
+        redis_client.expire(f"user_channels:{self.user.id}", 60)
 
     def _is_online(self, user_id):
         return redis_client.get(f"online_user:{user_id}") == "1"

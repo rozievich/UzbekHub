@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+from .consumers import redis_client
 from .models import ChatRoom, Message, File, RoomMember
 from .serializers import (
     ChatRoomSerializer,
@@ -32,7 +33,20 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        room = serializer.save()
+
+        channel_layer = get_channel_layer()
+        
+        for member in room.members.all():
+            channels = redis_client.smembers(f"user_channels:{member.id}")
+            for ch in channels:
+                ch = ch.decode("utf-8")
+                if redis_client.exists(f"channel:{ch}"):
+                    async_to_sync(channel_layer.group_add)(
+                        f"chat.{room.id}", ch
+                    )
+                else:
+                    redis_client.srem(f"user_channels:{member.id}", ch)
         return Response(serializer.data, status=201)
 
     def update(self, request, *args, **kwargs):
