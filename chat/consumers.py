@@ -26,16 +26,24 @@ class MultiRoomChatConsumer(WebsocketConsumer):
 
 
     def disconnect(self, code):
-        for rid in list(self.joined_rooms):
-            async_to_sync(self.channel_layer.group_discard)(f"chat.{rid}", self.channel_name)
-        redis_client.srem(f"user_channels:{self.user.id}", self.channel_name)
+        user = getattr(self, "user", None) or self.scope.get("user")
+
+        for rid in list(getattr(self, "joined_rooms", [])):
+            async_to_sync(self.channel_layer.group_discard)(
+                f"chat.{rid}", self.channel_name
+            )
+
+        if user and user.is_authenticated:
+            redis_client.srem(f"user_channels:{user.id}", self.channel_name)
+            redis_client.delete(f"online_user:{user.id}")
+
+            try:
+                user.last_online = timezone.now()
+                user.save(update_fields=["last_online"])
+            except Exception:
+                pass
+
         redis_client.delete(f"channel:{self.channel_name}")
-        redis_client.delete(f"online_user:{self.user.id}")
-        try:
-            self.user.last_online = timezone.now()
-            self.user.save(update_fields=["last_online"])
-        except Exception:
-            pass
 
     # --- helpers ---
     def _set_online(self):
