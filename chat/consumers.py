@@ -90,11 +90,11 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         for rid in qs:
             async_to_sync(self.channel_layer.group_add)(f"chat.{rid}", self.channel_name)
             self.joined_rooms.add(str(rid))
-        self.send_json({
+        self.send(text_data=json.dumps({
             "action": "join_rooms",
             "status": "ok",
             "joined_rooms": list(self.joined_rooms),
-        })
+        }))
         self._send_undelivered_messages()
 
     def _handle_message(self, data):
