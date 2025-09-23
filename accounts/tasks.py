@@ -32,7 +32,7 @@ def send_password_reset_email(email, reset_link):
         return False
 
     subject = 'Your UzbekHub password recovery request'
-    message = render_to_string('forget_password.html', {'reset_link': f"{settings.FRONTEND_URL}/auth/reset-link/{reset_link}/"})
+    message = render_to_string('forget_password.html', {'reset_link': f"{settings.FRONTEND_URL}/reset-password/{reset_link}/"})
 
     recipient_list = [email]
     

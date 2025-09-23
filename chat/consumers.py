@@ -11,12 +11,12 @@ HEARTBEAT_TTL = 60
 
 class MultiRoomChatConsumer(WebsocketConsumer):
     def connect(self):
+        self.joined_rooms = set()
         user = self.scope["user"]
         if not user.is_authenticated:
             self.close()
             return
         self.user = user
-        self.joined_rooms = set()
 
         redis_client.sadd(f"user_channels:{self.user.id}", self.channel_name)
         redis_client.setex(f"channel:{self.channel_name}", HEARTBEAT_TTL, self.user.id)
@@ -90,7 +90,11 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         for rid in qs:
             async_to_sync(self.channel_layer.group_add)(f"chat.{rid}", self.channel_name)
             self.joined_rooms.add(str(rid))
-
+        self.send_json({
+            "action": "join_rooms",
+            "status": "ok",
+            "joined_rooms": list(self.joined_rooms),
+        })
         self._send_undelivered_messages()
 
     def _handle_message(self, data):

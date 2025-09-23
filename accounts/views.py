@@ -388,7 +388,6 @@ class ProfileSearchAPIView(APIView):
         return Response(serializer.data, status=200)
 
 
-
 class ProfileDetailAPIView(APIView):
     serializer_class = UserWithoutEmailSerializer
     permission_classes = (IsAuthenticated, )
@@ -475,7 +474,7 @@ class UserStatusAPIView(APIView):
     def post(self, request, *args, **kwargs):
         if hasattr(request.user, 'status'):
             return Response({"error": "Status already exists. You can update it instead."}, status=400)
-        
+
         serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
@@ -530,7 +529,6 @@ class ContactAPIView(APIView):
         contacts = self.queryset.filter(owner=self.request.user)
         serializer = self.serializer_class(contacts, many=True)
         return Response(serializer.data, status=200)
-    
 
     @swagger_auto_schema(request_body=ContactModelSerializer)
     def post(self, request, *args, **kwargs):
@@ -550,27 +548,31 @@ class ContactDetailAPIView(APIView):
     def get(self, request, pk, *args, **kwargs):
         contact = self.queryset.filter(owner=request.user, id=pk).first()
         serializer = self.serializer_class(contact)
+        if not contact:
+            return Response({"detail": "Contact not found"}, status=404)
         return Response(serializer.data, status=200)
-    
+
+    @swagger_auto_schema(request_body=ContactModelSerializer)
     def put(self, request, pk, *args, **kwargs):
         try:
-            contact = self.queryset.filter(id=pk)
+            contact = self.queryset.filter(id=pk).first()
         except Contact.DoesNotExist:
-            return Response({"detail": "Not found."}, status=404)
+            return Response({"detail": "Contact not found"}, status=404)
 
-        serializer = self.serializer_class(contact, data=request.data, partial=False)
+        serializer = self.serializer_class(contact, data=request.data, partial=False, context={"request": request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=200)
         return Response(serializer.errors, status=400)
 
+    @swagger_auto_schema(request_body=ContactModelSerializer)
     def patch(self, request, pk, *args, **kwargs):
         try:
-            contact = self.queryset.filter(id=pk)
+            contact = self.queryset.filter(id=pk).first()
         except Contact.DoesNotExist:
-            return Response({"detail": "Not found."}, status=404)
+            return Response({"detail": "Contact not found"}, status=404)
 
-        serializer = self.serializer_class(contact, data=request.data, partial=True)
+        serializer = self.serializer_class(contact, data=request.data, partial=True, context={"request": request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=200)
@@ -578,9 +580,9 @@ class ContactDetailAPIView(APIView):
 
     def delete(self, request, pk, *args, **kwargs):
         try:
-            contact = self.queryset.filter(id=pk)
+            contact = self.queryset.filter(id=pk).first()
         except Contact.DoesNotExist:
-            return Response({"detail": "Not found."}, status=404)
+            return Response({"detail": "Contact not found"}, status=404)
 
         contact.delete()
         return Response(status=204)

@@ -40,7 +40,6 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         for member in room.members.all():
             channels = redis_client.smembers(f"user_channels:{member.id}")
             for ch in channels:
-                ch = ch.decode("utf-8")
                 if redis_client.exists(f"channel:{ch}"):
                     async_to_sync(channel_layer.group_add)(
                         f"chat.{room.id}", ch
