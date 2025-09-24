@@ -124,9 +124,9 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         message = Message.objects.create(room=room, sender=self.user, text=text, reply_to=reply_to)
         if file:
             file.message = message
-            file.save(update_fields=["message"])
+            file.is_temporary = False
+            file.save(update_fields=["message", "is_temporary"])
 
-        # MessageStatus ni tezroq qilish uchun tayyorlab, bulk_create qilamiz
         statuses = []
         now = timezone.now()
         online_cache = {}

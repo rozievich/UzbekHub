@@ -33,10 +33,10 @@ class ChatRoom(models.Model):
     def clean(self):
         if self.room_type == self.PRIVATE:
             if self.name or self.username or self.description or self.profile_pic:
-                raise ValidationError("Private chat uchun name, username, description, profile_pic bo'sh bo'lishi kerak.")
+                raise ValidationError("For private chat, name, username, description, profile_pic must be empty.")
         if self.room_type == self.GROUP:
             if not self.name:
-                raise ValidationError("Group chat uchun name majburiy.")
+                raise ValidationError("Name is required for group chat.")
 
     def __str__(self):
         return f"{self.room_type}: {self.name or self.id}"
@@ -93,13 +93,10 @@ class File(models.Model):
     ]
 
     unique_id = models.CharField(max_length=64, unique=True, editable=False)
-    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments")
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments", blank=True, null=True)
     file = models.FileField(upload_to="chat_files/")
     file_type = models.CharField(max_length=20, choices=FILE_TYPES, default="other")
-    size = models.PositiveIntegerField(null=True, blank=True)
-    duration = models.FloatField(null=True, blank=True)
-    width = models.PositiveIntegerField(null=True, blank=True)
-    height = models.PositiveIntegerField(null=True, blank=True)
+    is_temporary = models.BooleanField(default=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

@@ -1,9 +1,31 @@
 from rest_framework import serializers
 
 from accounts.models import CustomUser
-from .models import ChatRoom, RoomMember, Message, File, MessageStatus
+from .models import ChatRoom, RoomMember, Message, File, MessageStatus, MessageAction
 from .validators import validate_user_storage
 
+
+# MessageAction serializer
+class MessageActionSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
+    message = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all())
+
+    class Meta:
+        model = MessageAction
+        fields = "__all__"
+
+
+# MessageStatus serializer
+class MessageStatusSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
+    message = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all())
+
+    class Meta:
+        model = MessageStatus
+        fields = "__all__"
+
+
+# File serializer
 class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
@@ -19,6 +41,8 @@ class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     attachments = FileSerializer(many=True, read_only=True)
     reply_to = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all(), required=False, allow_null=True)
+    statuses = MessageStatusSerializer(many=True, read_only=True)
+    actions = MessageActionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Message
@@ -31,6 +55,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return attrs
 
 
+# RoomMember serializer
 class RoomMemberSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     room = serializers.PrimaryKeyRelatedField(queryset=ChatRoom.objects.all(), write_only=True)
@@ -54,7 +79,7 @@ class RoomMemberSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("There can only be 2 members in a private chat.")
 
         return attrs
-    
+
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     members = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True, write_only=True, required=False)
@@ -117,12 +142,3 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 RoomMember.objects.create(room=room, user=user, role=role)
 
         return room
-
-
-class MessageStatusSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
-    message = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all())
-
-    class Meta:
-        model = MessageStatus
-        fields = "__all__"
