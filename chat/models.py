@@ -97,19 +97,23 @@ class File(models.Model):
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments", blank=True, null=True)
     file = models.FileField(upload_to="chat_files/")
     file_type = models.CharField(max_length=20, choices=FILE_TYPES, default="other")
+    file_size = models.BigIntegerField(editable=False, default=0)
     is_temporary = models.BooleanField(default=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        if not self.unique_id:
+        if self.file and hasattr(self.file, "size"):
+            self.file_size = self.file.size
+
+        if not self.unique_id and self.file and hasattr(self.file, "chunks"):
             hasher = hashlib.sha256()
             self.file.open("rb")
             for chunk in self.file.chunks():
                 hasher.update(chunk)
             self.unique_id = hasher.hexdigest()
-            self.file.close()
+            self.file.seek(0)
         super().save(*args, **kwargs)
-
+    
     def __str__(self):
         return f"{self.file_type} - {self.unique_id[:10]}"
 

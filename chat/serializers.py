@@ -33,10 +33,10 @@ class FileSerializer(serializers.ModelSerializer):
         model = File
         fields = "__all__"
 
-    # def validate_file(self, value):
-    #     user = self.context["request"].user
-    #     validate_user_storage(user, value)
-    #     return value
+    def validate_file(self, value):
+        user = self.context["request"].user
+        validate_user_storage(user, value)
+        return value
 
 
 class MessageSerializer(serializers.ModelSerializer):
