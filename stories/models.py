@@ -15,8 +15,7 @@ class Story(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.story_id
-
+        return str(self.id)
 
 class StoryViewed(models.Model):
     story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name='viewers')
@@ -36,3 +35,5 @@ class StoryReaction(models.Model):
     class Meta:
         unique_together = ('story', 'user')
 
+    def __str__(self):
+        return f"{self.user.id} - {self.reaction}"
