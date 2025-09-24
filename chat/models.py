@@ -92,6 +92,7 @@ class File(models.Model):
         ("other", "Other"),
     ]
 
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="files")
     unique_id = models.CharField(max_length=64, unique=True, editable=False)
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments", blank=True, null=True)
     file = models.FileField(upload_to="chat_files/")
