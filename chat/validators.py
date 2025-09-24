@@ -3,11 +3,9 @@ from django.core.exceptions import ValidationError
 
 from .models import File
 
-def get_user_storage_usage(user) -> int:
-    return File.objects.filter(owner=user).aggregate(
-        total_size=Sum("file_size")
-    )["total_size"] or 0
 
+def get_user_storage_usage(user) -> int:
+    return File.objects.filter(owner=user).aggregate(total_size=Sum("file_size"))["total_size"] or 0
 
 def validate_user_storage(user, new_file):
     MAX_STORAGE = 200 * 1024 * 1024

@@ -113,7 +113,7 @@ class File(models.Model):
             self.unique_id = hasher.hexdigest()
             self.file.seek(0)
         super().save(*args, **kwargs)
-    
+
     def __str__(self):
         return f"{self.file_type} - {self.unique_id[:10]}"
 

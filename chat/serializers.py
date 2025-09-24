@@ -32,6 +32,7 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = "__all__"
+        read_only_fields = ["owner", "unique_id", "file_size", "is_temporary", "uploaded_at"]
 
     def validate_file(self, value):
         user = self.context["request"].user
@@ -39,6 +40,7 @@ class FileSerializer(serializers.ModelSerializer):
         return value
 
 
+# Message serializer
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     attachments = FileSerializer(many=True, read_only=True)

@@ -307,4 +307,4 @@ class FileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return File.objects.none()
-        return File.objects.filter(message__room__members=self.request.user).select_related("message", "message__sender")
+        return File.objects.filter(owner=self.request.user).select_related("message", "message__sender")
