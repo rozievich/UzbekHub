@@ -61,7 +61,7 @@ class CustomUserRegisterAPIView(CreateAPIView):
                 "message": "Sign up process already started",
                 "wait_seconds": ttl
             }, status=429)
-        send_to_gmail.apply_async(args=[user.email], countdown=5)
+        send_to_gmail.apply_async(args=[user.email], countdown=1)
         cache.set(f'user:{user.email}', user, timeout=settings.CACHE_TTL)
         return Response({"status": True, 'user': user.email}, status=201)
 
@@ -144,7 +144,7 @@ class ForgotPasswordAPIView(APIView):
                 "message": "Reset password process already started",
                 "wait_seconds": ttl
             }, status=429)
-        send_password_reset_email.apply_async(args=[email, reset_link], countdown=5)
+        send_password_reset_email.apply_async(args=[email, reset_link], countdown=1)
 
         cache.set(f'password_reset:{reset_link}', user.email, timeout=settings.CACHE_TTL)
         return Response({"message": "Password reset link has been sent to your email"})
@@ -200,7 +200,7 @@ class UserDeleteRequestAPIView(APIView):
                 "message": "Delete process already started",
                 "wait_seconds": ttl
             }, status=429)
-        delete_account_email.apply_async(args=[user.email], countdown=5)
+        delete_account_email.apply_async(args=[user.email], countdown=1)
         cache.set(f'delete_user:{user.email}', user, timeout=settings.CACHE_TTL)
         return Response({"message": "Verification code sent to email"}, status=200)
 
@@ -285,7 +285,7 @@ class ChangeEmailAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         email = serializer.data.get("new_email")
-        send_to_gmail.apply_async(args=[email], countdown=5)
+        send_to_gmail.apply_async(args=[email], countdown=1)
         cache.set(f'change_email:{email}', request.user, timeout=settings.CACHE_TTL)
         return Response({"message": "A verification code has been sent to your new email address to update your email."}, status=200)
 

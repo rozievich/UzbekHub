@@ -10,6 +10,7 @@ from asgiref.sync import async_to_sync
 
 from .consumers import redis_client
 from .models import ChatRoom, Message, File, RoomMember
+from .pagination import CustomLimitOffsetPagination
 from .serializers import (
     ChatRoomSerializer,
     MessageSerializer,
@@ -243,6 +244,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    pagination_class = CustomLimitOffsetPagination
     http_method_names = ['get', 'delete', 'head', 'options']
 
     def get_queryset(self):
@@ -283,7 +285,14 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path=r'room/(?P<room_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')
     def list_by_room(self, request, room_id=None):
-        qs = Message.objects.filter(room_id=room_id).order_by("-created_at")
+        room = ChatRoom.objects.filter(id=room_id).first()
+        if not room:
+            return Response({"detail": "Room not found."}, status=404)
+        
+        if not room.members.filter(id=request.user.id).exists():
+            return Response({"detail": "You are not a member of this room."}, status=403)
+
+        qs = Message.objects.filter(room=room).order_by("-created_at")
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data, status=200)
 
