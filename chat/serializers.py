@@ -28,15 +28,15 @@ class MessageStatusSerializer(serializers.ModelSerializer):
 # File serializer
 class FileSerializer(serializers.ModelSerializer):
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    
+
     class Meta:
         model = File
         fields = "__all__"
 
-    def validate_file(self, value):
-        user = self.context["request"].user
-        validate_user_storage(user, value)
-        return value
+    # def validate_file(self, value):
+    #     user = self.context["request"].user
+    #     validate_user_storage(user, value)
+    #     return value
 
 
 class MessageSerializer(serializers.ModelSerializer):
