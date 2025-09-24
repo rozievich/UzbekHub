@@ -27,6 +27,8 @@ class MessageStatusSerializer(serializers.ModelSerializer):
 
 # File serializer
 class FileSerializer(serializers.ModelSerializer):
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    
     class Meta:
         model = File
         fields = "__all__"
