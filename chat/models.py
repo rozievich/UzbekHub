@@ -83,6 +83,33 @@ class Message(models.Model):
         return self.text[:30] if self.text else "No text"
 
 
+# File model with custom manager
+class FileManager(models.Manager):
+    def get_or_create_with_owner(self, uploaded_file, owner, file_type="other"):
+        hasher = hashlib.sha256()
+        uploaded_file.open("rb")
+        for chunk in uploaded_file.chunks():
+            hasher.update(chunk)
+        file_hash = hasher.hexdigest()
+        uploaded_file.seek(0)
+
+        file, created = self.get_or_create(
+            unique_id=file_hash,
+            defaults={
+                "file": uploaded_file,
+                "file_type": file_type,
+                "file_size": uploaded_file.size,
+            },
+        )
+
+        already_owned = file.owners.filter(id=owner.id).exists()
+        if not already_owned:
+            file.owners.add(owner)
+
+        return file, created
+
+
+# File model
 class File(models.Model):
     FILE_TYPES = [
         ("image", "Image"),
@@ -92,7 +119,7 @@ class File(models.Model):
         ("other", "Other"),
     ]
 
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="files")
+    owners = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="files")
     unique_id = models.CharField(max_length=64, unique=True, editable=False)
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments", blank=True, null=True)
     file = models.FileField(upload_to="chat_files/")
@@ -101,19 +128,8 @@ class File(models.Model):
     is_temporary = models.BooleanField(default=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        if self.file and hasattr(self.file, "size"):
-            self.file_size = self.file.size
-
-        if not self.unique_id and self.file and hasattr(self.file, "chunks"):
-            hasher = hashlib.sha256()
-            self.file.open("rb")
-            for chunk in self.file.chunks():
-                hasher.update(chunk)
-            self.unique_id = hasher.hexdigest()
-            self.file.seek(0)
-        super().save(*args, **kwargs)
-
+    objects = FileManager()
+    
     def __str__(self):
         return f"{self.file_type} - {self.unique_id[:10]}"
 

@@ -27,17 +27,31 @@ class MessageStatusSerializer(serializers.ModelSerializer):
 
 # File serializer
 class FileSerializer(serializers.ModelSerializer):
-    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    owners = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = File
         fields = "__all__"
-        read_only_fields = ["owner", "unique_id", "file_size", "is_temporary", "uploaded_at"]
+        read_only_fields = ["unique_id", "file_size", "is_temporary", "uploaded_at"]
 
     def validate_file(self, value):
         user = self.context["request"].user
         validate_user_storage(user, value)
         return value
+
+    def create(self, validated_data):
+        user = validated_data.pop("owners")  # current user
+
+        uploaded_file = validated_data["file"]
+        file_type = validated_data.get("file_type", "other")
+
+        file, created = File.objects.get_or_create_with_owner(
+            uploaded_file=uploaded_file,
+            owner=user,
+            file_type=file_type,
+        )
+
+        return file
 
 
 # Message serializer
