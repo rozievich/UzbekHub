@@ -308,3 +308,15 @@ class FileViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return File.objects.none()
         return File.objects.filter(owners=self.request.user).select_related("message", "message__sender")
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if request.user not in instance.owners.all():
+            return Response(
+                {"detail": "You can only delete your own files."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if instance.owners.count() > 1:
+            instance.owners.remove(request.user)
+            return Response(status=204)
+        return super().destroy(request, *args, **kwargs)
