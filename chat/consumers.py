@@ -123,9 +123,10 @@ class MultiRoomChatConsumer(WebsocketConsumer):
 
         message = Message.objects.create(room=room, sender=self.user, text=text, reply_to=reply_to)
         if file:
-            file.message = message
-            file.is_temporary = False
-            file.save(update_fields=["message", "is_temporary"])
+            file.messages.add(message)
+            if file.is_temporary:
+                file.is_temporary = False
+                file.save(update_fields=["is_temporary"])
 
         statuses = []
         now = timezone.now()

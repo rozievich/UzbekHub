@@ -121,7 +121,7 @@ class File(models.Model):
 
     owners = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="files")
     unique_id = models.CharField(max_length=64, unique=True, editable=False)
-    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments", blank=True, null=True)
+    messages = models.ManyToManyField(Message, related_name="attachments", blank=True)
     file = models.FileField(upload_to="chat_files/")
     file_type = models.CharField(max_length=20, choices=FILE_TYPES, default="other")
     file_size = models.BigIntegerField(editable=False, default=0)
