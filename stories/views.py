@@ -1,9 +1,11 @@
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 from .permissions import IsOwnerPermission
 from .serializers import (
@@ -25,6 +27,39 @@ class StoriesModelViewSet(ModelViewSet):
     def list(self, request, *args, **kwargs):
         user_stories = self.queryset.filter(owner=request.user)
         serializer = self.serializer_class(user_stories, many=True)
+        return Response(data=serializer.data, status=200)
+
+    def retrieve(self, request, *args, **kwargs):
+        story = get_object_or_404(Story, pk=kwargs.get("pk"), is_active=True)
+
+        audience_checks = {
+            "contact": lambda: request.user in story.owner.contact_lists.all(),
+            "mention": lambda: request.user in story.mentions.all(),
+        }
+
+        check = audience_checks.get(story.audience)
+        if check and not check():
+            return Response(
+                {"detail": "You do not have permission to view this story."},
+                status=403
+            )
+
+        serializer = self.serializer_class(story)
+        return Response(data=serializer.data, status=200)
+
+    @action(detail=False, methods=['get'], url_path='<int:user_id>/stories')
+    def user_stories(self, request, user_id=None):
+        visible_q = (
+            Q(owner_id=user_id) & Q(is_active=True) & (
+                Q(owner=request.user) |
+                Q(audience='public') |
+                (Q(audience='contact') & Q(owner__contact_lists=request.user)) |
+                (Q(audience='mention') & Q(mentions=request.user))
+            )
+        )
+
+        stories_qs = Story.objects.filter(visible_q).distinct()
+        serializer = self.serializer_class(stories_qs, many=True, context={'request': request})
         return Response(data=serializer.data, status=200)
 
 
