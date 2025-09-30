@@ -325,6 +325,15 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             "cleared_by": event["cleared_by"]
         }))
 
+    def chat_deleted(self, event):
+        self.send(text_data=json.dumps(
+            {
+                "type": "chat_deleted",
+                "room_id": event["room_id"],
+                "deleted_by": event["deleted_by"]
+            }
+        ))
+
     # --- undelivered ---
     def _send_undelivered_messages(self):
         if not self.joined_rooms:
