@@ -24,10 +24,12 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     serializer_class = ChatRoomSerializer
     permission_classes = (permissions.IsAuthenticated, )
 
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ChatRoom.objects.none()
         return ChatRoom.objects.filter(members=self.request.user)
+
 
     def create(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={"request": request})
@@ -47,6 +49,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                     redis_client.srem(f"user_channels:{member.id}", ch)
         return Response(serializer.data, status=201)
 
+
     def update(self, request, *args, **kwargs):
         room = self.get_object()
 
@@ -61,20 +64,17 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "The room type was incorrectly specified."}, status=403)
 
+
     def destroy(self, request, *args, **kwargs):
         room = self.get_object()
+        channel_layer = get_channel_layer()
 
         if room.room_type == ChatRoom.GROUP:
             member = RoomMember.objects.filter(room=room, user=request.user).first()
             if not member or member.role != RoomMember.OWNER:
                 return Response({"detail": "Only the owner group can delete a room."}, status=403)
-            return super().destroy(request, *args, **kwargs)
-
-        if room.room_type == ChatRoom.PRIVATE:
-            if not RoomMember.objects.filter(room=room, user=request.user).exists():
-                return Response({"detail": "You are not a member of this private chat."}, status=403)
             
-            channel_layer = get_channel_layer()
+            room.delete()
             async_to_sync(channel_layer.group_send)(
                 f"chat.{room.id}",
                 {
@@ -83,9 +83,25 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                     "deleted_by": request.user.id
                 }
             )
-            return super().destroy(request, *args, **kwargs)
+            return Response(status=204)
+
+        if room.room_type == ChatRoom.PRIVATE:
+            if not RoomMember.objects.filter(room=room, user=request.user).exists():
+                return Response({"detail": "You are not a member of this private chat."}, status=403)
+            
+            room.delete()
+            async_to_sync(channel_layer.group_send)(
+                f"chat.{room.id}",
+                {
+                    "type": "chat.deleted",
+                    "room_id": str(room.id),
+                    "deleted_by": request.user.id
+                }
+            )
+            return Response(status=204)
             
         return Response({"detail": "The room type was incorrectly specified."}, status=403)
+
 
     @action(detail=True, methods=["delete"], url_path="clear_messages")
     def clear_messages(self, request, pk=None):
@@ -112,6 +128,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         return Response(status=204)
 
 
+
 # Room Members ViewSet
 class RoomMemberViewSet(viewsets.ViewSet):
     permission_classes = (permissions.IsAuthenticated, )
@@ -128,6 +145,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
             return None, Response({"detail": "You are not a member of this chat."}, status=status.HTTP_403_FORBIDDEN)
         return member, None
 
+
     @action(detail=False, methods=["get"], url_path=r'(?P<room_id>[^/.]+)/members')
     def list_members(self, request, room_id=None):
         room = self.get_room(room_id)
@@ -136,6 +154,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
             return error
         serializer = RoomMemberSerializer(room.room_members.all(), many=True)
         return Response(serializer.data)
+
 
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/join')
     def join(self, request, room_id=None):
@@ -150,6 +169,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
         RoomMember.objects.create(room=room, user=request.user, role=RoomMember.MEMBER)
         return Response({"detail": "You have joined the group."}, status=201)
 
+
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/leave')
     def leave(self, request, room_id=None):
         room = self.get_room(room_id)
@@ -160,6 +180,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
             return Response({"detail": "Owner cannot be removed, transfer ownership to another user first."}, status=400)
         member.delete()
         return Response({"detail": "You have left the group."}, status=200)
+
 
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/set_admin')
     def set_admin(self, request, room_id=None):
@@ -179,6 +200,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
         member.save()
         return Response({"detail": f"{member.user} has been appointed as admin."}, status=200)
 
+
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/remove_admin')
     def remove_admin(self, request, room_id=None):
         room = self.get_room(room_id)
@@ -196,6 +218,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
         member.role = RoomMember.MEMBER
         member.save()
         return Response({"detail": f"{member.user} has been demoted to member."}, status=200)
+
 
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/transfer_owner')
     def transfer_owner(self, request, room_id=None):
@@ -217,6 +240,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
         member.save()
         return Response({"detail": f"Ownership has been transferred to {member.user}."}, status=200)
 
+
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/add_member')
     def add_member(self, request, room_id=None):
         room = self.get_room(room_id)
@@ -233,6 +257,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
         RoomMember.objects.create(room=room, user_id=user_id, role=RoomMember.MEMBER)
         return Response({"detail": "User has been added to the group."})
 
+
     @action(detail=False, methods=["post"], url_path=r'(?P<room_id>[^/.]+)/remove_member')
     def remove_member(self, request, room_id=None):
         room = self.get_room(room_id)
@@ -248,6 +273,7 @@ class RoomMemberViewSet(viewsets.ViewSet):
         if deleted:
             return Response({"detail": "User removed from group."}, status=200)
         return Response({"detail": "User not found."}, status=404)
+
 
 
 # Message ViewSet
@@ -267,8 +293,13 @@ class MessageViewSet(viewsets.ModelViewSet):
         room_id = self.request.query_params.get("room_id")
         if room_id:
             qs = qs.filter(room_id=room_id)
-
         return qs.order_by("-created_at")
+
+    def list(self, request, *args, **kwargs):
+        messages = self.get_queryset()
+        if not messages:
+            return Response({"detail": "Message not found."}, status=404)
+        return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         room = serializer.validated_data.get("room")
