@@ -15,7 +15,7 @@ class Story(models.Model):
     caption = models.CharField(max_length=500, blank=True, null=True)
     marked = models.ManyToManyField(CustomUser, related_name="marked_users", blank=True)
     is_active = models.BooleanField(default=True)
-    audience = models.CharField(max_length=10, choices=select_action, default='pubic')
+    audience = models.CharField(max_length=10, choices=select_action, default='public')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
