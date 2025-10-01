@@ -101,3 +101,11 @@ class Contact(models.Model):
 
     def __str__(self):
         return self.nikname
+
+
+class PremiumUsername(models.Model):
+    username = models.CharField(max_length=25, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.username

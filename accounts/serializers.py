@@ -2,7 +2,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 
-from .models import CustomUser, Location, UserBlock, Status, Contact
+from .models import CustomUser, Location, UserBlock, Status, Contact, PremiumUsername
 from chat.consumers import redis_client
 
 
@@ -105,6 +105,11 @@ class CustomUserMyProfileSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
         value = value.lower()
+        premium_username = PremiumUsername.objects.filter(username=value)
+        if premium_username:
+            raise serializers.ValidationError(
+                "Sorry, this is a premium username."
+            )
         user_qs = CustomUser.objects.filter(username=value)
 
         if self.instance:
@@ -178,6 +183,12 @@ class CheckUsernameSerializer(serializers.Serializer):
     username = serializers.CharField(min_length=4, max_length=25)
 
     def validate_username(self, value):
+        value = value.lower()
+        premium_username = PremiumUsername.objects.filter(username=value)
+        if premium_username:
+            raise serializers.ValidationError(
+                "Sorry, this is a premium username."
+            )
         if not re.match(r'^[A-Za-z0-9._]+$', value):
             raise serializers.ValidationError(
                 "Username must contain only letters, numbers, periods, and underscores."
