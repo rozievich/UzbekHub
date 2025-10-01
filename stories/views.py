@@ -26,7 +26,7 @@ class StoriesModelViewSet(ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         user_stories = self.queryset.filter(owner=request.user)
-        serializer = self.serializer_class(user_stories, many=True)
+        serializer = self.serializer_class(user_stories, many=True, context={"request": request})
         return Response(data=serializer.data, status=200)
 
     def retrieve(self, request, *args, **kwargs):
@@ -44,7 +44,7 @@ class StoriesModelViewSet(ModelViewSet):
                 status=403
             )
 
-        serializer = self.serializer_class(story)
+        serializer = self.serializer_class(story, context={"request": request})
         return Response(data=serializer.data, status=200)
 
 
@@ -79,7 +79,7 @@ class ArchiveStoriesListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         user_stories = Story.objects.filter(owner=request.user, is_active=False)
-        serializer = self.serializer_class(user_stories, many=True)
+        serializer = self.serializer_class(user_stories, many=True, context={"request": request})
         return Response(serializer.data, status=200)
 
 
@@ -91,7 +91,7 @@ class ArchiveStoryGetDeleteAPIView(APIView):
     def get(self, request, pk):
         user_story = get_object_or_404(Story, pk=pk, is_active=False)
         self.check_object_permissions(request, user_story)
-        serializer = self.serializer_class(user_story)
+        serializer = self.serializer_class(user_story, context={"request": request})
         return Response(data=serializer.data, status=200)
 
     def delete(self, request, pk):
