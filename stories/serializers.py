@@ -37,6 +37,6 @@ class StoryModelSerializer(serializers.ModelSerializer):
         }
 
     def validate_audience(self, value):
-        if not value and value not in ["public", "contact", "marked"]:
+        if not value or value not in ["public", "contact", "marked"]:
             raise serializers.ValidationError("The audience field must not be empty and only accepts public, contact, and marked fields.")
         return value
