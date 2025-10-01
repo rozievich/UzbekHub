@@ -35,3 +35,8 @@ class StoryModelSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'marked': {'required': False}
         }
+
+    def validate_audience(self, value):
+        if not value and value not in ["public", "contact", "marked"]:
+            raise serializers.ValidationError("The audience field must not be empty and only accepts public, contact, and marked fields.")
+        return value
