@@ -1,5 +1,4 @@
 from rest_framework.views import APIView
-from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -7,6 +6,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
+from accounts.models import CustomUser
 from .models import Story, StoryViewed, StoryReaction
 from .permissions import IsOwnerPermission
 from .serializers import (
@@ -38,7 +38,7 @@ class StoriesModelViewSet(ModelViewSet):
         }
 
         check = audience_checks.get(story.audience)
-        if check and not check():
+        if check and not check() and request.user != story.owner:
             return Response(
                 {"detail": "You do not have permission to view this story."},
                 status=403
@@ -47,17 +47,22 @@ class StoriesModelViewSet(ModelViewSet):
         serializer = self.serializer_class(story)
         return Response(data=serializer.data, status=200)
 
-    @action(detail=False, methods=['get'], url_path='<int:user_id>/stories')
-    def user_stories(self, request, user_id=None):
+
+# User stories views
+class UserStoriesAPIView(APIView):
+    serializer_class = StoryModelSerializer
+    permission_classes = (IsAuthenticated, )
+
+    def get(self, request, user_id=None, *args, **kwargs):
+        user = get_object_or_404(CustomUser, pk=user_id)
         visible_q = (
-            Q(owner_id=user_id) & Q(is_active=True) & (
+            Q(owner=user) & Q(is_active=True) & (
                 Q(owner=request.user) |
                 Q(audience='public') |
-                (Q(audience='contact') & Q(owner__contact_lists=request.user)) |
-                (Q(audience='mention') & Q(mentions=request.user))
+                (Q(audience='contact') & Q(owner__contact_lists__contact=request.user)) |
+                (Q(audience='marked') & Q(marked=request.user))
             )
         )
-
         stories_qs = Story.objects.filter(visible_q).distinct()
         serializer = self.serializer_class(stories_qs, many=True, context={'request': request})
         return Response(data=serializer.data, status=200)
@@ -93,17 +98,6 @@ class ArchiveStoryGetDeleteAPIView(APIView):
         return Response(status=204)
 
 
-# User Public Stories View
-class UserPublicStoriesAPIView(APIView):
-    serializer_class = StoryModelSerializer
-    permission_classes = (IsAuthenticated, )
-
-    def get(self, request, user_id, *args, **kwargs):
-        user_stories = Story.objects.filter(owner_id=user_id, is_active=True, is_private=False)
-        serializer = self.serializer_class(user_stories, many=True)
-        return Response(data=serializer.data, status=200)
-
-
 # Story Reactions viewset
 class StoryReactionViewSet(ModelViewSet):
     queryset = StoryReaction.objects.all()
@@ -117,4 +111,4 @@ class StoryViewedModelViewSet(ModelViewSet):
     queryset = StoryViewed.objects.all()
     serializer_class = StoryViewedModelSerializer
     permission_classes = (IsAuthenticated, )
-    http_method_names = ['post', 'patch', 'delete']
+    http_method_names = ['post']
