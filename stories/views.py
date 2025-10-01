@@ -55,17 +55,20 @@ class UserStoriesAPIView(APIView):
 
     def get(self, request, user_id=None, *args, **kwargs):
         user = get_object_or_404(CustomUser, pk=user_id)
+
         visible_q = (
-            Q(owner=user) & Q(is_active=True) & (
-                Q(owner=request.user) |
+            Q(owner=user) &
+            Q(is_active=True) &
+            (
                 Q(audience='public') |
                 (Q(audience='contact') & Q(owner__contact_lists__contact=request.user)) |
                 (Q(audience='marked') & Q(marked=request.user))
             )
         )
+
         stories_qs = Story.objects.filter(visible_q).distinct()
         serializer = self.serializer_class(stories_qs, many=True, context={'request': request})
-        return Response(data=serializer.data, status=200)
+        return Response(serializer.data, status=200)
 
 
 # Archive Stories Views

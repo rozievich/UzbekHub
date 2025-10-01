@@ -6,7 +6,7 @@ from accounts.models import CustomUser
 # Create your models here.
 class Story(models.Model):
     select_action = (
-        ('pubic', 'Public'),
+        ('public', 'Public'),
         ('contact', 'Contacts'),
         ('marked', 'Marked'),
     )
