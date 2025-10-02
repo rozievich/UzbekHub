@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     # Custom apps
     'accounts.apps.AccountsConfig',
     'chat.apps.ChatConfig',
-    'stories.apps.StoriesConfig'
+    'stories.apps.StoriesConfig',
+    'notifications.apps.NotificationsConfig'
 ]
 
 MIDDLEWARE = [
