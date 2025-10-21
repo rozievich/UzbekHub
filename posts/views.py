@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from rest_framework import viewsets, status, permissions, views
+from rest_framework import viewsets, status, permissions, views, generics
 
 from .permissions import IsOwnerOrReadOnly
 from .models import (
@@ -11,7 +11,8 @@ from .models import (
 from .serializers import (
     PostSerializer,
     PostLikeSerializer,
-    PostCommentSerializer
+    PostCommentSerializer,
+    PostViewSerializer
 )
 
 # Post ViewSet
@@ -53,4 +54,20 @@ class PostCommentGetAPIView(views.APIView):
     def get(self, request, post_id):
         comments = PostComment.objects.filter(post__id=post_id)
         serializer = PostCommentSerializer(comments, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Post View CreateAPIView
+class PostViewCreateAPIView(generics.CreateAPIView):
+    queryset = PostViews.objects.all()
+    serializer_class = PostViewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class PostViewGetAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, post_id):
+        views = PostViews.objects.filter(post__id=post_id)
+        serializer = PostViewSerializer(views, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)

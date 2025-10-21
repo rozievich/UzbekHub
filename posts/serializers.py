@@ -72,6 +72,35 @@ class PostCommentSerializer(serializers.ModelSerializer):
         return instance
 
 
+# Post View Serializer
+class PostViewSerializer(serializers.ModelSerializer):
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
+
+    class Meta:
+        model = PostViews
+        fields = ['id', 'owner', 'post', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        post = attrs.get('post')
+        if PostViews.objects.filter(owner=user, post=post).exists():
+            raise serializers.ValidationError("You have already viewed this post.")
+        return attrs
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        representation = super().to_representation(instance)
+        representation['owner'] = {
+            "id": instance.owner.id,
+            "username": instance.owner.username,
+            "full_name": instance.owner.get_full_name(),
+            "profile_picture": request.build_absolute_uri(instance.owner.profile_picture.url) if instance.owner.profile_picture else None
+        }
+        return representation
+
+
 # Post Serializer
 class PostSerializer(serializers.ModelSerializer):
     images = PostImageSerializer(many=True, required=False)
