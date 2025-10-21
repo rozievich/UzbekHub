@@ -4,21 +4,10 @@ from uuid import uuid4
 from accounts.models import CustomUser
 
 
-# Post Image model
-class PostImages(models.Model):
-    id = models.CharField(max_length=128, default=uuid4, unique=True, primary_key=True)
-    image = models.FileField(upload_to="posts/images/")
-    created_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.id
-
-
 # Post model
 class Post(models.Model):
     id = models.CharField(max_length=128, default=uuid4, unique=True, primary_key=True)
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="posts")
-    images = models.ManyToManyField(PostImages, blank=True, null=True)
     content = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     is_edited = models.BooleanField(default=False)
@@ -27,7 +16,30 @@ class Post(models.Model):
 
     def __str__(self):
         return self.id
+
+    @property
+    def like_count(self):
+        return self.post_likes.count()
     
+    @property
+    def comment_count(self):
+        return self.post_comments.count()
+    
+    @property
+    def view_count(self):
+        return self.post_views.count()
+
+
+# Post Image model
+class PostImages(models.Model):
+    id = models.CharField(max_length=128, default=uuid4, unique=True, primary_key=True)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="images")
+    image = models.FileField(upload_to="posts/images/")
+    created_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.id
+
 
 # Post Views model
 class PostViews(models.Model):
@@ -41,7 +53,7 @@ class PostViews(models.Model):
 
 
 # Post Likes model
-class PostViews(models.Model):
+class PostLikes(models.Model):
     id = models.CharField(max_length=128, default=uuid4, unique=True, primary_key=True)
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user_likes")
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="post_likes")

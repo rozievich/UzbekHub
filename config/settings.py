@@ -31,8 +31,8 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'chat.apps.ChatConfig',
     'stories.apps.StoriesConfig',
-    'notifications.apps.NotificationsConfig'
-    'posts.apps.PostsConfig'
+    'notifications.apps.NotificationsConfig',
+    'posts.apps.PostsConfig',
 ]
 
 MIDDLEWARE = [
