@@ -20,7 +20,7 @@ router.register(r'comment', PostCommentViewSet, basename='post_comment')
 urlpatterns = [
     path('', include(router.urls)),
     path('views/', PostViewCreateAPIView.as_view(), name='post-view-create'),
-    path('<str:post_id>/likes/', PostLikesGetAPIView.as_view(), name='post-likes-get'),
-    path('<str:post_id>/comments/', PostCommentGetAPIView.as_view(), name='post-comments-get'),
-    path('<str:post_id>/views/', PostViewGetAPIView.as_view(), name='post-view-get'),
+    path('<uuid:post_id>/likes/', PostLikesGetAPIView.as_view(), name='post-likes-get'),
+    path('<uuid:post_id>/comments/', PostCommentGetAPIView.as_view(), name='post-comments-get'),
+    path('<uuid:post_id>/views/', PostViewGetAPIView.as_view(), name='post-view-get'),
 ]

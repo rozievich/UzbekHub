@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 
+from accounts.serializers import UserMiniSerializer
 from .models import Post, PostImages, PostLikes, PostComment, PostViews
 
 
@@ -15,7 +16,7 @@ class PostImageSerializer(serializers.ModelSerializer):
 # Post Like Serializer
 class PostLikeSerializer(serializers.ModelSerializer):
     post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
-    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    owner = UserMiniSerializer(read_only=True)
 
     class Meta:
         model = PostLikes
@@ -42,10 +43,15 @@ class PostLikeSerializer(serializers.ModelSerializer):
         }
         return representation
 
+    def create(self, validated_data):
+        request = self.context['request']
+        post_like = PostLikes.objects.create(owner=request.user, **validated_data)
+        return post_like
+
 
 # Post Comment Serializer
 class PostCommentSerializer(serializers.ModelSerializer):
-    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    owner = UserMiniSerializer(read_only=True)
     post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
 
     class Meta:
@@ -71,10 +77,15 @@ class PostCommentSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def create(self, validated_data):
+        request = self.context['request']
+        post_comment = PostComment.objects.create(owner=request.user, **validated_data)
+        return post_comment
+
 
 # Post View Serializer
 class PostViewSerializer(serializers.ModelSerializer):
-    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    owner = UserMiniSerializer(read_only=True)
     post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
 
     class Meta:
@@ -100,11 +111,16 @@ class PostViewSerializer(serializers.ModelSerializer):
         }
         return representation
 
+    def create(self, validated_data):
+        request = self.context['request']
+        post_view = PostViews.objects.create(owner=request.user, **validated_data)
+        return post_view
+
 
 # Post Serializer
 class PostSerializer(serializers.ModelSerializer):
     images = PostImageSerializer(many=True, required=False)
-    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    owner = UserMiniSerializer(read_only=True)
     like_count = serializers.IntegerField(read_only=True)
     comment_count = serializers.IntegerField(read_only=True)
     view_count = serializers.IntegerField(read_only=True)
@@ -115,12 +131,17 @@ class PostSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'owner', 'is_active', 'is_edited', 'created_at', 'updated_at']
 
     def create(self, validated_data):
-        request = self.context.get('request')
+        request = self.context['request']
         images_data = request.FILES.getlist('images') if request else []
 
-        post = Post.objects.create(**validated_data)
-        for image_data in images_data:
-            PostImages.objects.create(post=post, image=image_data)
+        post = Post.objects.create(owner=request.user, **validated_data)
+
+        images = [
+            PostImages(post=post, image=image_data)
+            for image_data in images_data
+        ]
+
+        PostImages.objects.bulk_create(images)
         return post
 
 

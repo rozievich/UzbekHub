@@ -6,6 +6,13 @@ from .models import CustomUser, Location, UserBlock, Status, Contact, PremiumUse
 from chat.consumers import redis_client
 
 
+# UserMiniSeralizer
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = "id", "first_name", "last_name", "profile_picture"
+
+
 # User registration serializer
 class UserSignUpSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=128)
