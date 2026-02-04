@@ -47,8 +47,9 @@ class MultiRoomChatConsumer(WebsocketConsumer):
 
     # --- helpers ---
     def _set_online(self):
+        redis_client.setex(f"online_user:{self.user.id}", HEARTBEAT_TTL, "1")
         redis_client.expire(f"channel:{self.channel_name}", HEARTBEAT_TTL)
-        redis_client.expire(f"user_channels:{self.user.id}", 60)
+        redis_client.expire(f"user_channels:{self.user.id}", HEARTBEAT_TTL)
 
     def _is_online(self, user_id):
         return redis_client.get(f"online_user:{user_id}") == "1"
@@ -119,21 +120,37 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         file_id = data.get("file_id")
 
         reply_to = Message.objects.filter(id=reply_to_id, room_id=room_id).first() if reply_to_id else None
-        file = File.objects.filter(id=file_id).first() if file_id else None
+        
+        # Validate file ownership
+        file = None
+        if file_id:
+            file = File.objects.filter(id=file_id, owners=self.user).first()
+            if not file:
+                self.send(text_data=json.dumps({"event": "message", "type": "error", "message": "File not found or not owned by you"}))
+                return
 
         message = Message.objects.create(room=room, sender=self.user, text=text, reply_to=reply_to)
         if file:
-            file.messages.add(message)
+            message.attachments.add(file)
             if file.is_temporary:
                 file.is_temporary = False
                 file.save(update_fields=["is_temporary"])
 
+        # Use Redis pipeline for efficient online status checking
+        member_ids = list(room.members.values_list("id", flat=True))
+        pipeline = redis_client.pipeline()
+        for member_id in member_ids:
+            pipeline.get(f"online_user:{member_id}")
+        results = pipeline.execute()
+        
+        online_cache = {
+            member_id: (result == "1") 
+            for member_id, result in zip(member_ids, results)
+        }
+        
         statuses = []
         now = timezone.now()
-        online_cache = {}
-        for member_id, in room.members.values_list("id"):
-            if member_id not in online_cache:
-                online_cache[member_id] = self._is_online(member_id)
+        for member_id in member_ids:
             is_me = (member_id == self.user.id)
             statuses.append(MessageStatus(
                 message=message,
@@ -183,14 +200,20 @@ class MultiRoomChatConsumer(WebsocketConsumer):
 
     def _handle_delete_message(self, data):
         message_id = data.get("message_id")
-        message = Message.objects.select_related("room").filter(id=message_id).first()
+        # Only allow sender to delete their own messages
+        message = Message.objects.select_related("room").filter(
+            id=message_id,
+            sender=self.user
+        ).first()
+        
         if not message or str(message.room_id) not in self.joined_rooms:
             self.send(text_data=json.dumps({"event": "delete_message", "type": "error", "message": "Message not found or not authorized"}))
             return
         
+        room_id = message.room_id
         message.delete()
         async_to_sync(self.channel_layer.group_send)(
-            f"chat.{message.room_id}",
+            f"chat.{room_id}",
             {
                 "type": "chat.delete_message",
                 "message_id": message_id
@@ -246,6 +269,13 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if room_id not in self.joined_rooms:
             self.send(text_data=json.dumps({"event": "typing", "type": "error", "message": "Not joined to the room"}))
             return
+        
+        # Throttling - prevent spam (max once per 2 seconds)
+        cache_key = f"typing:{self.user.id}:{room_id}"
+        if redis_client.exists(cache_key):
+            return  # Too fast, ignore
+        redis_client.setex(cache_key, 2, "1")  # 2 second throttle
+        
         room = ChatRoom.objects.filter(id=room_id, members__id=self.user.id).first()
         if not room:
             self.send(text_data=json.dumps({"event": "typing", "type": "error", "message": "Not joined to the room"}))
@@ -339,13 +369,18 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if not self.joined_rooms:
             self.send(text_data=json.dumps({"event": "undelivered_messages", "type": "error", "message": "Not joined to any room"}))
             return
+        
+        # Limit to 100 messages to prevent overwhelming the client
         qs = (MessageStatus.objects
               .filter(user=self.user, is_delivered=False, message__room_id__in=self.joined_rooms)
               .select_related("message", "message__sender")
-              .order_by("message__created_at"))
-
+              .order_by("message__created_at")[:100])
+        
+        # Convert to list for bulk_update
+        statuses = list(qs)
         now = timezone.now()
-        for st in qs:
+        
+        for st in statuses:
             msg = st.message
             self.send(text_data=json.dumps({
                 "type": "message",
@@ -353,10 +388,12 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                 "message_id": str(msg.id),
                 "text": msg.text,
                 "sender": msg.sender.id,
-                "reply_to": str(msg.reply_to_id),
+                "reply_to": str(msg.reply_to_id) if msg.reply_to_id else None,
                 "file_id": getattr(getattr(msg, "file", None), "id", None),
                 "created_at": msg.created_at.isoformat()
             }))
             st.is_delivered = True
             st.delivered_at = now
-        MessageStatus.objects.bulk_update(qs, ["is_delivered", "delivered_at"], batch_size=200)
+        
+        if statuses:
+            MessageStatus.objects.bulk_update(statuses, ["is_delivered", "delivered_at"], batch_size=200)

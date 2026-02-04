@@ -66,9 +66,16 @@ class UserStoriesAPIView(APIView):
             )
         )
 
-        stories_qs = Story.objects.filter(visible_q).distinct()
+        stories_qs = (
+            Story.objects
+            .filter(visible_q)
+            .select_related('owner')
+            .prefetch_related('marked', 'viewers', 'reactions')
+            .distinct()
+        )
         serializer = self.serializer_class(stories_qs, many=True, context={'request': request})
         return Response(serializer.data, status=200)
+
 
 
 # Archive Stories Views

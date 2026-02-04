@@ -14,6 +14,13 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['owner', '-created_at']),
+            models.Index(fields=['is_active', '-created_at']),
+        ]
+
     def __str__(self):
         return self.id
 
@@ -48,6 +55,12 @@ class PostViews(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="post_views")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ('post', 'owner')
+        indexes = [
+            models.Index(fields=['post', 'owner']),
+        ]
+
     def __str__(self):
         return self.id
 
@@ -58,6 +71,13 @@ class PostLikes(models.Model):
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="user_likes")
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="post_likes")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'owner')
+        indexes = [
+            models.Index(fields=['post', 'owner']),
+            models.Index(fields=['post', '-created_at']),
+        ]
 
     def __str__(self):
         return self.id
@@ -73,6 +93,12 @@ class PostComment(models.Model):
     is_edited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['post', '-created_at']),
+            models.Index(fields=['owner', '-created_at']),
+        ]
 
     def __str__(self):
         return self.id

@@ -75,6 +75,13 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     update_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['room', '-created_at']),
+            models.Index(fields=['sender', '-created_at']),
+        ]
+
     def clean(self):
         if not self.text and not self.attachments.exists():
             raise ValidationError("Message must have either text or file!")
@@ -129,6 +136,11 @@ class File(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     objects = FileManager()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_temporary', 'uploaded_at']),
+        ]
     
     def __str__(self):
         return f"{self.file_type} - {self.unique_id[:10]}"
@@ -157,6 +169,11 @@ class MessageStatus(models.Model):
 
     class Meta:
         unique_together = ("message", "user")
+        indexes = [
+            models.Index(fields=['user', 'is_delivered']),
+            models.Index(fields=['user', 'is_read']),
+        ]
 
     def __str__(self):
         return f"{self.user} - {self.message.id} (Read: {self.is_read})"
+

@@ -44,6 +44,13 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['username']),
+            models.Index(fields=['email']),
+            models.Index(fields=['is_active', '-date_joined']),
+        ]
+
     def clean(self):
         if self.username:
             if CustomUser.objects.filter(username=self.username).exclude(pk=self.pk).exists():
@@ -99,6 +106,12 @@ class Contact(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     update_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('owner', 'contact')
+        indexes = [
+            models.Index(fields=['owner', 'contact']),
+        ]
+
     def __str__(self):
         return self.nikname
 
@@ -109,3 +122,4 @@ class PremiumUsername(models.Model):
 
     def __str__(self):
         return self.username
+

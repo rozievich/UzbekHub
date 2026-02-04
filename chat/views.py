@@ -28,7 +28,12 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ChatRoom.objects.none()
-        return ChatRoom.objects.filter(members=self.request.user)
+        return (
+            ChatRoom.objects
+            .filter(members=self.request.user)
+            .prefetch_related("room_members", "room_members__user")
+            .order_by("-created_at")
+        )
 
 
     def create(self, request, *args, **kwargs):
@@ -288,7 +293,18 @@ class MessageViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return Message.objects.none()
 
-        qs = Message.objects.filter(room__members=self.request.user).select_related("sender", "room")
+        qs = (
+            Message.objects
+            .filter(room__members=self.request.user)
+            .select_related("sender", "room", "reply_to")
+            .prefetch_related(
+                "attachments",
+                "statuses",
+                "statuses__user",
+                "actions",
+                "actions__user"
+            )
+        )
 
         room_id = self.request.query_params.get("room_id")
         if room_id:

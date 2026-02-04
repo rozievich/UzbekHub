@@ -19,6 +19,13 @@ class Story(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_active', '-created_at']),
+            models.Index(fields=['owner', 'is_active', '-created_at']),
+            models.Index(fields=['audience', 'is_active']),
+        ]
+
     def __str__(self):
         return str(self.id)
 
@@ -27,6 +34,13 @@ class StoryViewed(models.Model):
     story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name='viewers')
     viewer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('story', 'viewer')
+        indexes = [
+            models.Index(fields=['story', 'viewer']),
+            models.Index(fields=['viewer', '-viewed_at']),
+        ]
 
     def __str__(self):
         return str(self.viewer.id)
@@ -40,6 +54,10 @@ class StoryReaction(models.Model):
 
     class Meta:
         unique_together = ('story', 'user')
+        indexes = [
+            models.Index(fields=['story', '-reacted_at']),
+        ]
 
     def __str__(self):
         return f"{self.user.id} - {self.reaction}"
+

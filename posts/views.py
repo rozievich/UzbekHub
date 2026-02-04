@@ -1,5 +1,6 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status, permissions, views, generics
+from django.db.models import Count
 
 from .permissions import IsOwnerOrReadOnly
 from .models import (
@@ -17,9 +18,21 @@ from .serializers import (
 
 # Post ViewSet
 class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+
+    def get_queryset(self):
+        return (
+            Post.objects.all()
+            .select_related('owner')
+            .prefetch_related('images')
+            .annotate(
+                like_count=Count('post_likes'),
+                comment_count=Count('post_comments'),
+                view_count=Count('post_views')
+            )
+        )
+
 
 
 # Post like ViewSet
@@ -35,7 +48,7 @@ class PostLikesGetAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, post_id):
-        likes = PostLikes.objects.filter(post__id=post_id)
+        likes = PostLikes.objects.filter(post__id=post_id).select_related('owner')
         serializer = PostLikeSerializer(likes, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -52,7 +65,7 @@ class PostCommentGetAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, post_id):
-        comments = PostComment.objects.filter(post__id=post_id)
+        comments = PostComment.objects.filter(post__id=post_id).select_related('owner')
         serializer = PostCommentSerializer(comments, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -68,6 +81,6 @@ class PostViewGetAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, post_id):
-        views = PostViews.objects.filter(post__id=post_id)
+        views = PostViews.objects.filter(post__id=post_id).select_related('owner')
         serializer = PostViewSerializer(views, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
