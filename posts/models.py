@@ -24,23 +24,23 @@ class Post(models.Model):
     def __str__(self):
         return self.id
 
-    @property
-    def like_count(self):
-        if hasattr(self, 'annotated_likes'):
-            return self.annotated_likes
-        return self.post_likes.count()
+    # @property
+    # def like_count(self):
+    #     if hasattr(self, 'annotated_likes'):
+    #         return self.annotated_likes
+    #     return self.post_likes.count()
     
-    @property
-    def comment_count(self):
-        if hasattr(self, 'annotated_comments'):
-            return self.annotated_comments
-        return self.post_comments.count()
+    # @property
+    # def comment_count(self):
+    #     if hasattr(self, 'annotated_comments'):
+    #         return self.annotated_comments
+    #     return self.post_comments.count()
     
-    @property
-    def view_count(self):
-        if hasattr(self, 'annotated_views'):
-            return self.annotated_views
-        return self.post_views.count()
+    # @property
+    # def view_count(self):
+    #     if hasattr(self, 'annotated_views'):
+    #         return self.annotated_views
+    #     return self.post_views.count()
 
 
 # Post Image model
