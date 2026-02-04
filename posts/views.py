@@ -27,9 +27,9 @@ class PostViewSet(viewsets.ModelViewSet):
             .select_related('owner')
             .prefetch_related('images')
             .annotate(
-                like_count=Count('post_likes'),
-                comment_count=Count('post_comments'),
-                view_count=Count('post_views')
+                annotated_likes=Count('post_likes'),
+                annotated_comments=Count('post_comments'),
+                annotated_views=Count('post_views')
             )
         )
 

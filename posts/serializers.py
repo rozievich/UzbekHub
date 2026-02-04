@@ -105,9 +105,9 @@ class PostViewSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     images = PostImageSerializer(many=True, required=False)
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    like_count = serializers.IntegerField(read_only=True)
-    comment_count = serializers.IntegerField(read_only=True)
-    view_count = serializers.IntegerField(read_only=True)
+    like_count = serializers.IntegerField(source='like_count', read_only=True)
+    comment_count = serializers.IntegerField(source='comment_count', read_only=True)
+    view_count = serializers.IntegerField(source='view_count', read_only=True)
 
     class Meta:
         model = Post
