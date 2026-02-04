@@ -37,7 +37,7 @@ class PostViewSet(viewsets.ModelViewSet):
 
 # Post like ViewSet
 class PostLikeViewSet(viewsets.ModelViewSet):
-    queryset = PostLikes.objects.all()
+    queryset = PostLikes.objects.all().select_related('owner', 'post')
     serializer_class = PostLikeSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
     http_method_names = ['post', 'delete', 'head', 'options']
@@ -48,14 +48,14 @@ class PostLikesGetAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, post_id):
-        likes = PostLikes.objects.filter(post__id=post_id).select_related('owner')
+        likes = PostLikes.objects.filter(post__id=post_id).select_related('owner', 'post')
         serializer = PostLikeSerializer(likes, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # Post Comment ViewSet
 class PostCommentViewSet(viewsets.ModelViewSet):
-    queryset = PostComment.objects.all()
+    queryset = PostComment.objects.all().select_related('owner', 'post', 'reply_to')
     serializer_class = PostCommentSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
     http_method_names = ['post', 'patch', 'delete', 'head', 'options']
