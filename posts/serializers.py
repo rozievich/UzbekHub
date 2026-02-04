@@ -105,10 +105,13 @@ class PostViewSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     images = PostImageSerializer(many=True, required=False)
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    like_count = serializers.IntegerField(read_only=True)
+    comment_count = serializers.IntegerField(read_only=True)
+    view_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'content', 'owner', 'images', 'is_active', 'is_edited', 'created_at', 'updated_at']
+        fields = ['id', 'content', 'owner', 'images', 'is_active', 'is_edited', 'like_count', 'comment_count', 'view_count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'owner', 'is_active', 'is_edited', 'created_at', 'updated_at']
 
     def create(self, validated_data):
@@ -132,11 +135,3 @@ class PostSerializer(serializers.ModelSerializer):
         for image_data in images_data:
             PostImages.objects.update_or_create(post=post, image=image_data)
         return instance
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['like_count'] = instance.like_count
-        representation['comment_count'] = instance.comment_count
-        representation['view_count'] = instance.view_count
-        return representation
-
