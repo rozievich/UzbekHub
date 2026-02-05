@@ -15,6 +15,7 @@ class Post(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=['-created_at']),
             models.Index(fields=['owner', '-created_at']),
@@ -44,6 +45,7 @@ class PostViews(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ["-created_at"]
         unique_together = ('post', 'owner')
         indexes = [
             models.Index(fields=['post', 'owner']),
@@ -61,6 +63,7 @@ class PostLikes(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ["-created_at"]
         unique_together = ('post', 'owner')
         indexes = [
             models.Index(fields=['post', 'owner']),
@@ -83,6 +86,7 @@ class PostComment(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=['post', '-created_at']),
             models.Index(fields=['owner', '-created_at']),
@@ -90,4 +94,3 @@ class PostComment(models.Model):
 
     def __str__(self):
         return self.id
-

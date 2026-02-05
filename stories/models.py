@@ -20,6 +20,7 @@ class Story(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=['is_active', '-created_at']),
             models.Index(fields=['owner', 'is_active', '-created_at']),
@@ -36,6 +37,7 @@ class StoryViewed(models.Model):
     viewed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ["-created_at"]
         unique_together = ('story', 'viewer')
         indexes = [
             models.Index(fields=['story', 'viewer']),
@@ -53,6 +55,7 @@ class StoryReaction(models.Model):
     reacted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ["-created_at"]
         unique_together = ('story', 'user')
         indexes = [
             models.Index(fields=['story', '-reacted_at']),

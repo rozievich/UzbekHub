@@ -76,6 +76,7 @@ class Message(models.Model):
     update_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=['-created_at']),
             models.Index(fields=['room', '-created_at']),
@@ -153,6 +154,7 @@ class MessageAction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        ordering = ["-created_at"]
         unique_together = ("message", "user", "value")
 
     def __str__(self):
