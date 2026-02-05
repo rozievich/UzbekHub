@@ -1,6 +1,6 @@
 from rest_framework.response import Response
 from rest_framework import viewsets, status, permissions, views, generics
-from django.db.models import Count
+from django.db.models import Count, Exists, OuterRef
 
 from .permissions import IsOwnerOrReadOnly
 from .models import (
@@ -16,10 +16,13 @@ from .serializers import (
     PostViewSerializer
 )
 
+from utils.pagination import StandardResultsSetPagination
+
 # Post ViewSet
 class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         return (
@@ -27,9 +30,10 @@ class PostViewSet(viewsets.ModelViewSet):
             .select_related('owner')
             .prefetch_related('images')
             .annotate(
-                like_count=Count('post_likes'),
-                comment_count=Count('post_comments'),
-                view_count=Count('post_views')
+                like_count=Count('post_likes', distinct=True),
+                comment_count=Count('post_comments', distinct=True),
+                view_count=Count('post_views', distinct=True),
+                is_liked=Exists(PostLikes.objects.filter(post=OuterRef('pk'), owner=self.request.user))
             )
         )
 

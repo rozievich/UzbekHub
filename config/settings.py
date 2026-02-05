@@ -116,6 +116,10 @@ REST_FRAMEWORK = {
         "profile_search": "60/minute",
         "public_profile": "10/minute",
     },
+    'DEFAULT_RENDERER_CLASSES': (
+        'utils.renderers.ORJSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ),
 }
 
 

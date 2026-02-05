@@ -334,12 +334,26 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        if instance.sender != request.user:
+        if not instance.room.members.filter(id=request.user.id).exists():
             return Response(
-                {"detail": "You can only delete your own message."},
+                {"detail": "You are not a member of this room."},
                 status=status.HTTP_403_FORBIDDEN
             )
-        return super().destroy(request, *args, **kwargs)
+        
+        room_id = instance.room.id
+        message_id = str(instance.id)
+        
+        super().destroy(request, *args, **kwargs)
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat.{room_id}",
+            {
+                "type": "chat.delete_message",
+                "message_id": message_id
+            }
+        )
+        return Response(status=204)
 
     @action(detail=False, methods=["get"], url_path=r'room/(?P<room_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')
     def list_by_room(self, request, room_id=None):
@@ -351,6 +365,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             return Response({"detail": "You are not a member of this room."}, status=403)
 
         qs = Message.objects.filter(room=room).order_by("-created_at")
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data, status=200)
 

@@ -840,34 +840,41 @@ Base path: `/api/posts/`
 Barcha postlar ro'yxati.
 
 - **Authentication**: ✅ Required
+- **Pagination**: ✅ Standard Pagination (page, page_size)
 - **Response** (200 OK):
 ```json
-[
-  {
-    "id": "uuid-string",
-    "content": "This is my first post!",
-    "owner": {
-      "id": 1,
-      "username": "johndoe",
-      "full_name": "John Doe",
-      "profile_picture": "http://example.com/media/profile_pictures/image.jpg"
-    },
-    "images": [
-      {
-        "id": "uuid-string",
-        "image": "http://example.com/media/posts/images/image1.jpg",
-        "created_at": "2024-02-04T10:00:00Z"
-      }
-    ],
-    "is_active": true,
-    "is_edited": false,
-    "like_count": 15,
-    "comment_count": 3,
-    "view_count": 50,
-    "created_at": "2024-02-04T10:00:00Z",
-    "updated_at": null
-  }
-]
+{
+  "count": 100,
+  "next": "http://example.com/api/posts/post/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "uuid-string",
+      "content": "This is my first post!",
+      "owner": {
+        "id": 1,
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "profile_picture": "http://example.com/media/profile_pictures/image.jpg"
+      },
+      "images": [
+        {
+          "id": "uuid-string",
+          "image": "http://example.com/media/posts/images/image1.jpg",
+          "created_at": "2024-02-04T10:00:00Z"
+        }
+      ],
+      "is_active": true,
+      "is_edited": false,
+      "is_liked": false,
+      "like_count": 15,
+      "comment_count": 3,
+      "view_count": 50,
+      "created_at": "2024-02-04T10:00:00Z",
+      "updated_at": null
+    }
+  ]
+}
 ```
 
 ---
@@ -887,7 +894,7 @@ Post yaratish.
 }
 ```
 
-- **Response** (201 Created): Same as List Posts item
+- **Response** (201 Created): Single Post Object (see List Posts result item)
 
 > **Note**: `images` ixtiyoriy. Bir nechta rasm yuklash mumkin.
 
@@ -1820,11 +1827,13 @@ Chat xonadagi xabarlar ro'yxati.
 
 Xabarni o'chirish.
 
-- **Authentication**: ✅ Required (Sender only)
+- **Authentication**: ✅ Required (Any room member)
 - **URL Parameters**:
   - `id` (string): Message UUID
   
 - **Response** (204 No Content)
+
+> **Note**: O'chirilganda WebSocket orqali `delete_message` eventi barcha qatnashchilarga boradi.
 
 ---
 
@@ -1979,11 +1988,14 @@ socket.send(JSON.stringify({
 ```
 
 #### Message Events
-- `chat_message` - Yangi xabar
-- `message_edited` - Xabar tahrirlandi
-- `message_deleted` - Xabar o'chirildi
-- `user_typing` - Foydalanuvchi yozmoqda
-- `message_read` - Xabar o'qildi
+- `message` - Yangi xabar
+- `edit_message` - Xabar tahrirlandi
+- `delete_message` - Xabar o'chirildi
+- `typing` - Foydalanuvchi yozmoqda
+- `read` - Xabar o'qildi
+- `action` - Reaktsiya qoldirildi
+- `cleared` - Xatlar tozalandi
+- `chat_deleted` - Chat o'chirildi
 
 ---
 

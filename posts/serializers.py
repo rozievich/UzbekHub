@@ -124,10 +124,11 @@ class PostSerializer(serializers.ModelSerializer):
     like_count = serializers.IntegerField(read_only=True)
     comment_count = serializers.IntegerField(read_only=True)
     view_count = serializers.IntegerField(read_only=True)
+    is_liked = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'content', 'owner', 'images', 'is_active', 'is_edited', 'like_count', 'comment_count', 'view_count', 'created_at', 'updated_at']
+        fields = ['id', 'content', 'owner', 'images', 'is_active', 'is_edited', 'like_count', 'comment_count', 'view_count', 'is_liked', 'created_at', 'updated_at']
         read_only_fields = ['id', 'owner', 'is_active', 'is_edited', 'created_at', 'updated_at']
 
     def create(self, validated_data):

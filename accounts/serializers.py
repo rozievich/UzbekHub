@@ -10,7 +10,7 @@ from chat.consumers import redis_client
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = "id", "first_name", "last_name", "profile_picture"
+        fields = "id", "first_name", "last_name", "username", "profile_picture"
 
 
 # User registration serializer
