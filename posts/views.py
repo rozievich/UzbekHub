@@ -1,19 +1,16 @@
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework import viewsets, status, permissions, views, generics
 from django.db.models import Count, Exists, OuterRef
 
 from .permissions import IsOwnerOrReadOnly
 from .models import (
-    Post,
-    PostLikes,
-    PostComment,
-    PostViews
+    Post, PostLikes,
+    PostComment, PostViews
 )
 from .serializers import (
-    PostSerializer,
-    PostLikeSerializer,
-    PostCommentSerializer,
-    PostViewSerializer
+    PostSerializer, PostLikeSerializer,
+    PostCommentSerializer, PostViewSerializer
 )
 
 from utils.pagination import StandardResultsSetPagination
@@ -33,9 +30,22 @@ class PostViewSet(viewsets.ModelViewSet):
                 like_count=Count('post_likes', distinct=True),
                 comment_count=Count('post_comments', distinct=True),
                 view_count=Count('post_views', distinct=True),
-                is_liked=Exists(PostLikes.objects.filter(post=OuterRef('pk'), owner=self.request.user))
+                is_liked=Exists(PostLikes.objects.filter(post=OuterRef('pk'), owner=self.request.user)),
+                is_read=Exists(PostViews.objects.filter(post=OuterRef('pk'), owner=self.request.user))
             )
         )
+
+    @action(detail=False, methods=["get"])
+    def myposts(self, request):
+        queryset = self.get_queryset().filter(owner=request.user)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 

@@ -1,119 +1,225 @@
 # Chat Application API Documentation
 
-This document provides a comprehensive guide for the frontend team to integrate the Chat application features, including REST API endpoints and WebSocket events.
+This documentation provides a comprehensive guide for the frontend team to integrate the Chat application features. It includes details on Authentication, REST API endpoints, and WebSocket real-time events.
 
-## 1. Authentication
+## Base URL
+`https://<your-domain>/api/` (adjust based on your actual Nginx/server config)
+
+## Authentication
+All API requests and WebSocket connections require a **JWT Access Token**.
 
 ### REST API
-All REST endpoints require a valid JWT token in the header.
+Include the token in the `Authorization` header:
 ```http
-Authorization: Bearer <access_token>
+Authorization: Bearer <your_access_token>
 ```
 
 ### WebSockets
-The WebSocket connection requires the token as a query parameter.
+Include the token as a query parameter in the URL:
 ```
-ws://<domain>/ws/chat/?token=<access_token>
+ws://<your-domain>/ws/chat/?token=<your_access_token>
 ```
 
 ---
 
-## 2. REST API Endpoints
+## 1. Files API
+Use this API to upload media (images, videos, voice notes, files) *before* sending a message.
 
-### 2.1. Chat Rooms (`/chat/rooms/`)
+### 1.1. Upload File
+**Endpoint**: `POST /chat/files/`
+**Content-Type**: `multipart/form-data`
 
-- **GET `/chat/rooms/`**: List all rooms the current user is a member of.
-- **POST `/chat/rooms/`**: Create a new chat room.
-    - **Private Room**:
-      ```json
-      {
-        "room_type": "private",
-        "members": [user_id_1, user_id_2]
-      }
-      ```
-      *Note: Exactly 2 members required.*
-    - **Group Room**:
-      ```json
-      {
-        "room_type": "group",
-        "username": "group_username",
-        "name": "Group Name",
-        "description": "Optional description",
-        "members": [user_id_1, user_id_2, ...]
-      }
-      ```
-- **GET `/chat/rooms/{uuid}/`**: Retrieve room details.
-- **PATCH/PUT `/chat/rooms/{uuid}/`**: Update room details (Group only, Admin/Owner only).
-- **DELETE `/chat/rooms/{uuid}/`**: Delete a room (Group Owner only, or any member for Private).
-- **DELETE `/chat/rooms/{uuid}/clear_messages/`**: Clear all messages in the room (Group Admin/Owner only).
+**Request Body**:
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `file` | File | Yes | The file functionality to be uploaded. |
+| `file_type` | String | No | `image`, `video`, `voice`, `document`, `other`. Default: `other`. |
 
-### 2.2. Room Members (`/chat/members/`)
-
-- **GET `/chat/members/{room_id}/members/`**: List all members of a specific room.
-- **POST `/chat/members/{room_id}/join/`**: Join a group chat.
-- **POST `/chat/members/{room_id}/leave/`**: Leave a group chat.
-- **POST `/chat/members/{room_id}/add_member/`**: Add a user to the group.
-    - Body: `{"user_id": "uuid"}`
-- **POST `/chat/members/{room_id}/remove_member/`**: Remove a user from the group.
-    - Body: `{"user_id": "uuid"}`
-- **POST `/chat/members/{room_id}/set_admin/`**: Promote a member to Admin.
-    - Body: `{"user_id": "uuid"}`
-- **POST `/chat/members/{room_id}/remove_admin/`**: Demote an Admin to Member.
-    - Body: `{"user_id": "uuid"}`
-- **POST `/chat/members/{room_id}/transfer_owner/`**: Transfer room ownership to another member.
-    - Body: `{"user_id": "uuid"}`
-
-### 2.3. Messages (`/chat/message/`)
-
-- **GET `/chat/message/`**: List messages. Supports pagination and filtering.
-    - Query Params: `?room_id={uuid}`
-- **GET `/chat/message/room/{room_id}/`**: Get all messages for a specific room.
-
-### 2.4. Files (`/chat/files/`)
-
-- **GET `/chat/files/`**: List files owned by the user.
-- **POST `/chat/files/`**: Upload a file (MultiPart Form).
-    - Fields: `file` (File), `file_type` (image/video/voice/document/other).
-    - Returns: `{"id": "file_uuid", ...}`. Use this ID when sending a message via WebSocket.
+**Response (201 Created)**:
+```json
+{
+    "id": "e0847250-1234-5678-9012-345678901234",
+    "file": "https://domain.com/media/chat_files/image.png",
+    "file_type": "image",
+    "file_size": 102400,
+    "unique_id": "sha256_hash...",
+    "uploaded_at": "2023-10-27T10:00:00Z"
+}
+```
+> **Note**: Store the `id` from the response to use it in the `send_message` WebSocket event.
 
 ---
 
-## 3. WebSocket API
+## 2. Chat Rooms API
 
-### 3.1. Connection & Initial Setup
-1. Connect to `ws://<domain>/ws/chat/?token=<token>`.
-2. Send `join_rooms` to start receiving messages for your rooms.
-   ```json
-   {
-     "type": "join_rooms",
-     "rooms": ["room_uuid_1", "room_uuid_2"]
-   }
-   ```
-3. The server will respond with:
-   ```json
-   {
-     "action": "join_rooms",
-     "status": "ok",
-     "joined_rooms": ["room_uuid_1", "room_uuid_2"]
-   }
-   ```
-   Followed by up to 100 **undelivered messages** (messages sent while you were offline).
+### 2.1. List Rooms
+Get a list of all chat rooms (Private and Group) the user is part of.
 
-### 3.2. Heartbeat
-Send a ping every ~30-50 seconds to keep the connection alive and remain "Online".
-- **Client sends**: `{"type": "ping"}`
-- **Server responds**: `{"type": "pong"}`
+**Endpoint**: `GET /chat/rooms/`
 
-### 3.3. Sending Events
+**Response (200 OK)**:
+```json
+[
+    {
+        "id": "room_uuid",
+        "room_type": "private", // or "group"
+        "name": null, // Group name if group
+        "username": null, // Group username if group
+        "description": null,
+        "profile_pic": null,
+        "created_at": "...",
+        "room_members": [
+            {
+                "id": 1,
+                "user": 101, // user_id
+                "role": "member",
+                "joined_at": "..."
+            }
+        ]
+    },
+    ...
+]
+```
+
+### 2.2. Create Room
+Create a new private or group chat.
+
+**Endpoint**: `POST /chat/rooms/`
+
+**Request Body (Private)**:
+```json
+{
+    "room_type": "private",
+    "members": [102] // ID of the other user. (You don't need to send your own ID, backend adds it)
+}
+```
+
+**Request Body (Group)**:
+```json
+{
+    "room_type": "group",
+    "username": "dev_team",
+    "name": "Development Team",
+    "description": "Official chat for devs",
+    "members": [102, 103, 104] // IDs of initial members
+}
+```
+
+**Response (201 Created)**: Returns the created room object (same structure as List Rooms).
+
+### 2.3. Get Room Details
+**Endpoint**: `GET /chat/rooms/{id}/`
+
+### 2.4. Update Room (Group Only)
+**Endpoint**: `PATCH /chat/rooms/{id}/`
+**Permissions**: Owner or Admin only.
+
+**Request Body**:
+```json
+{
+    "name": "New Group Name",
+    "description": "Updated description",
+    "profile_pic": (file)
+}
+```
+
+### 2.5. Delete Room
+**Endpoint**: `DELETE /chat/rooms/{id}/`
+*   **Private**: Deletes the chat for both users.
+*   **Group**: Only the **Owner** can delete the group.
+
+### 2.6. Clear History
+**Endpoint**: `DELETE /chat/rooms/{id}/clear_messages/`
+**Permissions**: Owner or Admin only (for Groups).
+Clears all messages in the room.
+
+---
+
+## 3. Options for Room Members (Group Only)
+
+### 3.1. List Members
+**Endpoint**: `GET /chat/members/{room_id}/members/`
+
+### 3.2. Join Group
+**Endpoint**: `POST /chat/members/{room_id}/join/`
+
+### 3.3. Leave Group
+**Endpoint**: `POST /chat/members/{room_id}/leave/`
+
+### 3.4. Add Member
+**Endpoint**: `POST /chat/members/{room_id}/add_member/`
+**Body**: `{"user_id": 105}`
+**Permissions**: Owner/Admin only.
+
+### 3.5. Remove Member
+**Endpoint**: `POST /chat/members/{room_id}/remove_member/`
+**Body**: `{"user_id": 105}`
+**Permissions**: Owner/Admin only.
+
+### 3.6. Manage Roles (Owner Only)
+*   **Promote to Admin**: `POST /chat/members/{room_id}/set_admin/` -> `{"user_id": 105}`
+*   **Demote Admin**: `POST /chat/members/{room_id}/remove_admin/` -> `{"user_id": 105}`
+*   **Transfer Ownership**: `POST /chat/members/{room_id}/transfer_owner/` -> `{"user_id": 105}`
+
+---
+
+## 4. Messages API (REST)
+Mainly used for fetching history. Real-time messaging happens via WebSockets.
+
+### 4.1. Get Message History
+**Endpoint**: `GET /chat/message/room/{room_id}/`
+**Pagination**: `?limit=20&offset=0`
+
+**Response (200 OK)**:
+```json
+{
+    "count": 142,
+    "next": "...",
+    "previous": null,
+    "results": [
+        {
+            "id": "msg_uuid",
+            "text": "Hello world",
+            "sender": 101,
+            "room": "room_uuid",
+            "reply_to": null,
+            "is_edited": false,
+            "created_at": "...",
+            "attachments": [ ... ], // Array of file objects
+            "statuses": [ ... ], // Read/Delivered statuses
+            "actions": [ ... ] // Reactions
+        }
+    ]
+}
+```
+
+---
+
+## 5. WebSocket API (Real-time)
+**URL**: `ws://<domain>/ws/chat/?token=<token>`
+
+### 5.1. Connection Workflow
+1.  **Connect**: Establish WS connection.
+2.  **Join Rooms**: Immediately send `join_rooms` event to subscribe to your chats.
+    ```json
+    {
+      "type": "join_rooms",
+      "rooms": ["room_uuid_1", "room_uuid_2"] // Send all known room IDs locally
+    }
+    ```
+3.  **Receive Undelivered**: Server sends `undelivered_messages` if you missed any while offline.
+4.  **Heartbeat**: Send `{"type": "ping"}` every ~30s.
+
+### 5.2. Client -> Server Events
 
 #### Send Message
 ```json
 {
   "type": "message",
-  "room_id": "uuid",
-  "text": "Hello world",
-  "reply_to": "message_uuid",
-  "file_id": "file_uuid"
+  "room_id": "room_uuid",
+  "text": "Hello!",
+  "reply_to": "parent_message_uuid", // Optional
+  "file_id": "file_uuid_from_upload_api" // Optional
 }
 ```
 
@@ -121,8 +227,8 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "edit_message",
-  "message_id": "uuid",
-  "text": "Updated text"
+  "message_id": "message_uuid",
+  "text": "Corrected text"
 }
 ```
 
@@ -130,7 +236,7 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "delete_message",
-  "message_id": "uuid"
+  "message_id": "message_uuid"
 }
 ```
 
@@ -138,16 +244,16 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "read",
-  "message_id": "uuid"
+  "message_id": "message_uuid"
 }
 ```
 
-#### Add Reaction/Action
+#### Reaction (Like/Emotion)
 ```json
 {
   "type": "action",
-  "message_id": "uuid",
-  "value": "❤️"
+  "message_id": "message_uuid",
+  "value": "👍" // Any string/emoji
 }
 ```
 
@@ -155,24 +261,24 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "typing",
-  "room_id": "uuid",
+  "room_id": "room_uuid",
   "is_typing": true
 }
 ```
 
-### 3.4. Receiving Events (Server -> Client)
+### 5.3. Server -> Client Events
 
-#### New Message
+#### Message Received
 ```json
 {
   "type": "message",
-  "room_id": "uuid",
-  "message_id": "uuid",
+  "room_id": "...",
+  "message_id": "...",
   "text": "...",
   "sender": "username",
-  "reply_to": "uuid/null",
-  "file_id": "uuid/null",
-  "created_at": "ISO-Timestamp"
+  "reply_to": "...",
+  "file_id": "...",
+  "created_at": "..."
 }
 ```
 
@@ -180,7 +286,7 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "edit_message",
-  "message_id": "uuid",
+  "message_id": "...",
   "text": "...",
   "created_at": "...",
   "updated_at": "..."
@@ -191,27 +297,27 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "delete_message",
-  "message_id": "uuid"
+  "message_id": "..."
 }
 ```
 
-#### Message Read
+#### Read Receipt Update
 ```json
 {
   "type": "read",
-  "message_id": "uuid",
+  "message_id": "...",
   "user": "username",
   "read_at": "..."
 }
 ```
 
-#### Reaction/Action Added
+#### Reaction Update
 ```json
 {
   "type": "action",
-  "message_id": "uuid",
-  "value": "...",
-  "user": "user_id",
+  "message_id": "...",
+  "value": "👍",
+  "user": 101,
   "created_at": "..."
 }
 ```
@@ -220,25 +326,7 @@ Send a ping every ~30-50 seconds to keep the connection alive and remain "Online
 ```json
 {
   "type": "typing",
-  "user": "user_id",
-  "is_typing": true/false
-}
-```
-
-#### Room Cleared
-```json
-{
-  "type": "cleared",
-  "room_id": "uuid",
-  "cleared_by": "user_id"
-}
-```
-
-#### Room Deleted
-```json
-{
-  "type": "chat_deleted",
-  "room_id": "uuid",
-  "deleted_by": "user_id"
+  "user": 101,
+  "is_typing": true
 }
 ```
