@@ -200,10 +200,8 @@ class MultiRoomChatConsumer(WebsocketConsumer):
 
     def _handle_delete_message(self, data):
         message_id = data.get("message_id")
-        # Only allow sender to delete their own messages
         message = Message.objects.select_related("room").filter(
-            id=message_id,
-            sender=self.user
+            id=message_id
         ).first()
         
         if not message or str(message.room_id) not in self.joined_rooms:
