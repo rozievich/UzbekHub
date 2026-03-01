@@ -102,6 +102,7 @@ class RoomMemberSerializer(serializers.ModelSerializer):
 class ChatRoomSerializer(serializers.ModelSerializer):
     members = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True, write_only=True, required=False)
     room_members = RoomMemberSerializer(many=True, read_only=True)
+    unread_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = ChatRoom

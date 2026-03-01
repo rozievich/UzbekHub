@@ -142,12 +142,12 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         for member_id in member_ids:
             pipeline.get(f"online_user:{member_id}")
         results = pipeline.execute()
-        
+
         online_cache = {
             member_id: (result == "1") 
             for member_id, result in zip(member_ids, results)
         }
-        
+
         statuses = []
         now = timezone.now()
         for member_id in member_ids:
@@ -183,7 +183,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if not message or str(message.room_id) not in self.joined_rooms:
             self.send(text_data=json.dumps({"event": "edit_message", "type": "error", "message": "Message not found or not authorized"}))
             return
-        
+
         message.text = text
         message.is_edited = True
         message.save(update_fields=["text", "is_edited", "update_at"])
@@ -203,11 +203,11 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         message = Message.objects.select_related("room").filter(
             id=message_id
         ).first()
-        
+
         if not message or str(message.room_id) not in self.joined_rooms:
             self.send(text_data=json.dumps({"event": "delete_message", "type": "error", "message": "Message not found or not authorized"}))
             return
-        
+
         room_id = message.room_id
         message.delete()
         async_to_sync(self.channel_layer.group_send)(
@@ -259,7 +259,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                     "read_at": status.read_at.isoformat()
                 }
             )
-    
+
     def _handle_typing(self, data):
         room_id = str(data.get("room_id"))
         is_typing = data.get("is_typing", False)
@@ -299,7 +299,7 @@ class MultiRoomChatConsumer(WebsocketConsumer):
                 "updated_at": event["updated_at"]
             }
         ))
-    
+
     # --- delete message event handlers ---
     def chat_delete_message(self, event):
         self.send(text_data=json.dumps(
@@ -367,17 +367,17 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         if not self.joined_rooms:
             self.send(text_data=json.dumps({"event": "undelivered_messages", "type": "error", "message": "Not joined to any room"}))
             return
-        
+
         # Limit to 100 messages to prevent overwhelming the client
         qs = (MessageStatus.objects
               .filter(user=self.user, is_delivered=False, message__room_id__in=self.joined_rooms)
               .select_related("message", "message__sender")
               .order_by("message__created_at")[:100])
-        
+
         # Convert to list for bulk_update
         statuses = list(qs)
         now = timezone.now()
-        
+
         for st in statuses:
             msg = st.message
             self.send(text_data=json.dumps({
@@ -392,6 +392,6 @@ class MultiRoomChatConsumer(WebsocketConsumer):
             }))
             st.is_delivered = True
             st.delivered_at = now
-        
+
         if statuses:
             MessageStatus.objects.bulk_update(statuses, ["is_delivered", "delivered_at"], batch_size=200)

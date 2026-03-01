@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
+from django.db.models import Count, Q
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -28,9 +29,19 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ChatRoom.objects.none()
+
         return (
             ChatRoom.objects
             .filter(members=self.request.user)
+            .annotate(
+                unread_count=Count(
+                    "messages__statuses",
+                    filter=Q(
+                        messages__statuses__user=self.request.user,
+                        messages__statuses__is_read=False
+                    )
+                )
+            )
             .prefetch_related("room_members", "room_members__user")
             .order_by("-created_at")
         )
