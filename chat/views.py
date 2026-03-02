@@ -105,7 +105,6 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
             if not RoomMember.objects.filter(room=room, user=request.user).exists():
                 return Response({"detail": "You are not a member of this private chat."}, status=403)
             
-            room.delete()
             async_to_sync(channel_layer.group_send)(
                 f"chat.{room.id}",
                 {
@@ -114,6 +113,7 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                     "deleted_by": request.user.id
                 }
             )
+            room.delete()
             return Response(status=204)
             
         return Response({"detail": "The room type was incorrectly specified."}, status=403)

@@ -354,13 +354,22 @@ class MultiRoomChatConsumer(WebsocketConsumer):
         }))
 
     def chat_deleted(self, event):
+        room_id = str(event["room_id"])
+
         self.send(text_data=json.dumps(
             {
                 "type": "chat_deleted",
-                "room_id": event["room_id"],
+                "room_id": room_id,
                 "deleted_by": event["deleted_by"]
             }
         ))
+        if room_id in self.joined_rooms:
+            self.joined_rooms.remove(room_id)
+
+        async_to_sync(self.channel_layer.group_discard)(
+            f"chat.{room_id}",
+            self.channel_name
+        )
 
     # --- undelivered ---
     def _send_undelivered_messages(self):
