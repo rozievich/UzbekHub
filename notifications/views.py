@@ -1,27 +1,35 @@
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_yasg.utils import swagger_auto_schema
-from .serializers import CommentModelSerializer
-from .models import Comment
-# Create your views here.
+from .models import Notification, FCMDevice
+from .serializers import NotificationSerializer, FCMDeviceSerializer
 
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-class CommentModelAPIView(APIView):
-    queryset = Comment.objects.all()
-    serializer_class = CommentModelSerializer
-    permission_classes = (AllowAny, )
+    def get_queryset(self):
+        return Notification.objects.filter(recipient=self.request.user)
 
-    def get(self, request, *args, **kwargs):
-        comments = self.queryset.all()
-        serializer = self.serializer_class(comments, many=True)
-        return Response(serializer.data, status=200)
-    
-    @swagger_auto_schema(request_body=CommentModelSerializer)
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=201)
+    @action(detail=True, methods=['post'])
+    def read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
+        return Response({'status': 'notification marked as read'})
 
-    
+    @action(detail=False, methods=['post'])
+    def read_all(self, request):
+        self.get_queryset().filter(is_read=False).update(is_read=True)
+        return Response({'status': 'all notifications marked as read'})
+
+class FCMDeviceViewSet(viewsets.ModelViewSet):
+    serializer_class = FCMDeviceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['post', 'delete']
+
+    def get_queryset(self):
+        return FCMDevice.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

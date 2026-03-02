@@ -1,7 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import NotificationViewSet, FCMDeviceViewSet
 
-from .views import CommentModelAPIView
+router = DefaultRouter()
+router.register(r'devices', FCMDeviceViewSet, basename='fcmdevice')
+router.register(r'', NotificationViewSet, basename='notification')
 
 urlpatterns = [
-    path('comment', CommentModelAPIView.as_view(), name="comment_data")
+    path('', include(router.urls)),
 ]
