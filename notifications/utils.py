@@ -8,7 +8,7 @@ from .models import FCMDevice, Notification
 logger = logging.getLogger(__name__)
 
 # Firebase initialization
-firebase_creds_path = os.path.join(settings.BASE_DIR, 'config', 'ws-notification-4dcca-firebase-adminsdk-fbsvc-9b52b22c40.json')
+firebase_creds_path = os.path.join(settings.BASE_DIR, 'ws-notification-4dcca-firebase-adminsdk-fbsvc-9b52b22c40.json')
 
 def initialize_firebase():
     if not firebase_admin._apps:
