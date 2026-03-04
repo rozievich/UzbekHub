@@ -70,20 +70,24 @@ def send_fcm_notification(user, title, body, notification_type, sender=None, dat
     )
 
     try:
-        response = messaging.send_multicast(message)
+        response = messaging.send_each_for_multicast(message)
         logger.info(f"Successfully sent {response.success_count} notifications for user {user.id}")
+        print(f"[FCM] Successfully sent {response.success_count}/{len(tokens)} notifications for user {user.id}")
         
         # Cleanup invalid tokens
         if response.failure_count > 0:
             invalid_tokens = []
             for idx, resp in enumerate(response.responses):
                 if not resp.success:
-                    # Token no longer valid
+                    logger.warning(f"[FCM] Failed to send to token {idx}: {resp.exception}")
+                    print(f"[FCM] Failed to send to token {idx}: {resp.exception}")
                     invalid_tokens.append(tokens[idx])
             
             if invalid_tokens:
                 FCMDevice.objects.filter(registration_token__in=invalid_tokens).delete()
                 logger.info(f"Deleted {len(invalid_tokens)} invalid tokens")
+                print(f"[FCM] Deleted {len(invalid_tokens)} invalid tokens")
                 
     except Exception as e:
-        logger.error(f"Error sending multicast message: {e}")
+        logger.error(f"Error sending notification: {e}")
+        print(f"[FCM] ERROR: {e}")
