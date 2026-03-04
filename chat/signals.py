@@ -51,7 +51,6 @@ def notify_new_message(sender, instance, created, **kwargs):
                     user=sender_user.username or sender_user.email,
                     text=instance.text[:50] + "..." if instance.text and len(instance.text) > 50 else instance.text or "Fayl yuborildi"
                 )
-                
                 send_fcm_notification(
                     user=recipient,
                     title=title,
