@@ -26,7 +26,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 class FCMDeviceViewSet(viewsets.ModelViewSet):
     serializer_class = FCMDeviceSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['post', 'delete']
+    http_method_names = ['get', 'post', 'delete']
 
     def get_queryset(self):
         return FCMDevice.objects.filter(user=self.request.user)
